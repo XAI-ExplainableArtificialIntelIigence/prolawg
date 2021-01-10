@@ -3,6 +3,7 @@ module Tests exposing (..)
 import Expect
 import Logic exposing (..)
 import Test exposing (..)
+import Types exposing (..)
 
 
 suite : Test
@@ -278,75 +279,6 @@ suite =
                         )
                         [ "E", "C", "D" ]
             ]
-        , describe "tableau"
-            [ test "B?, A, A -> B" <|
-                \_ ->
-                    Expect.equal
-                        (tableau
-                            [ { support = [ Simple (Not (Variable "B")) ]
-                              , conclusion = Not (Variable "B")
-                              }
-                            ]
-                            [ Implies (Variable "A") (Variable "B")
-                            , Variable "A"
-                            ]
-                        )
-                        [ [ { conclusion = Positive "A"
-                            , support = [ Simple (Variable "A") ]
-                            }
-                          , { conclusion = Negative "A"
-                            , support = [ Simple (Implies (Variable "A") (Variable "B")) ]
-                            }
-                          , { conclusion = Negative "B"
-                            , support = [ Simple (Not (Variable "B")) ]
-                            }
-                          ]
-                        , [ { conclusion = Positive "A"
-                            , support = [ Simple (Variable "A") ]
-                            }
-                          , { conclusion = Positive "B"
-                            , support = [ Simple (Implies (Variable "A") (Variable "B")) ]
-                            }
-                          , { conclusion = Negative "B"
-                            , support = [ Simple (Not (Variable "B")) ]
-                            }
-                          ]
-                        ]
-            ]
-        , describe "argumentsForClosure"
-            [ test "A, ¬A, ¬B" <|
-                \_ ->
-                    Expect.equal
-                        (argumentsForClosure
-                            [ { conclusion = Positive "A"
-                              , support = [ Simple (Variable "A") ]
-                              }
-                            , { conclusion = Negative "A"
-                              , support = [ Simple (Implies (Variable "A") (Variable "B")) ]
-                              }
-                            , { conclusion = Negative "B"
-                              , support = [ Simple (Not (Variable "B")) ]
-                              }
-                            ]
-                        )
-                        [ [ Simple (Variable "A"), Simple (Implies (Variable "A") (Variable "B")) ] ]
-            , test "A, B, ¬B" <|
-                \_ ->
-                    Expect.equal
-                        (argumentsForClosure
-                            [ { conclusion = Positive "A"
-                              , support = [ Simple (Variable "A") ]
-                              }
-                            , { conclusion = Positive "B"
-                              , support = [ Simple (Implies (Variable "A") (Variable "B")) ]
-                              }
-                            , { conclusion = Negative "B"
-                              , support = [ Simple (Not (Variable "B")) ]
-                              }
-                            ]
-                        )
-                        [ [ Simple (Implies (Variable "A") (Variable "B")), Simple (Not (Variable "B")) ] ]
-            ]
         , describe "explanation"
             [ test "A?, A" <|
                 \_ ->
@@ -355,7 +287,7 @@ suite =
                             [ Variable "A"
                             ]
                         )
-                        [ [ Simple (Variable "A") ]
+                        [ Simple (Variable "A")
                         ]
             , test "B?, A -> B, A" <|
                 \_ ->
@@ -365,8 +297,7 @@ suite =
                             , Variable "A"
                             ]
                         )
-                        [ [ Simple (Implies (Variable "A") (Variable "B")), Simple (Variable "A") ]
-                        ]
+                        [ Complex { conclusion = Implies (Variable "A") (Variable "B"), support = [ Simple (Variable "A") ] } ]
             , test "C?, A, A -> B, B -> C" <|
                 \_ ->
                     Expect.equal
@@ -376,8 +307,7 @@ suite =
                             , Implies (Variable "B") (Variable "C")
                             ]
                         )
-                        [ [ Simple (Implies (Variable "A") (Variable "B")), Simple (Implies (Variable "B") (Variable "C")), Simple (Variable "A") ]
-                        ]
+                        [ Complex { conclusion = Implies (Variable "B") (Variable "C"), support = [ Complex { conclusion = Implies (Variable "A") (Variable "B"), support = [ Simple (Variable "A") ] } ] } ]
             , test "E?, A, A -> B, B -> C, C -> D, D -> E" <|
                 \_ ->
                     Expect.equal
@@ -389,6 +319,45 @@ suite =
                             , Implies (Variable "D") (Variable "E")
                             ]
                         )
-                        [ [ Simple (Implies (Variable "A") (Variable "B")), Simple (Implies (Variable "B") (Variable "C")), Simple (Implies (Variable "C") (Variable "D")), Simple (Implies (Variable "D") (Variable "E")), Simple (Variable "A") ] ]
+                        [ Complex { conclusion = Implies (Variable "D") (Variable "E"), support = [ Complex { conclusion = Implies (Variable "C") (Variable "D"), support = [ Complex { conclusion = Implies (Variable "B") (Variable "C"), support = [ Complex { conclusion = Implies (Variable "A") (Variable "B"), support = [ Simple (Variable "A") ] } ] } ] } ] } ]
+            , test "C?, A and B -> C, A, B" <|
+                \_ ->
+                    Expect.equal
+                        (explanation (Variable "C")
+                            [ Implies (And (Variable "A") (Variable "B")) (Variable "C")
+                            , Variable "A"
+                            , Variable "B"
+                            ]
+                        )
+                        [ Complex
+                            { conclusion = Implies (And (Variable "A") (Variable "B")) (Variable "C")
+                            , support =
+                                [ Complex { conclusion = Variable "A", support = [ Simple (Variable "B") ] }
+                                , Complex { conclusion = Variable "B", support = [ Simple (Variable "A") ] }
+                                ]
+                            }
+                        ]
+            , test "C?, A or B -> C, A, B" <|
+                \_ ->
+                    Expect.equal
+                        (explanation (Variable "C")
+                            [ Implies (Or (Variable "A") (Variable "B")) (Variable "C")
+                            , Variable "A"
+                            , Variable "B"
+                            ]
+                        )
+                        [ Complex
+                            { conclusion = Implies (Or (Variable "A") (Variable "B")) (Variable "C")
+                            , support =
+                                [ Complex
+                                    { conclusion = Implies (Or (Variable "A") (Variable "B")) (Variable "C")
+                                    , support =
+                                        [ Simple (Variable "A")
+                                        , Simple (Variable "B")
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
             ]
         ]

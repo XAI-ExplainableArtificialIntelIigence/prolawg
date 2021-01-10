@@ -1,27 +1,9 @@
 module Logic exposing (..)
 
-import Dict exposing (Dict)
-import Html exposing (i)
-import List
 import List.Extra as List
 import Maybe
 import Maybe.Extra as Maybe
-
-
-type Proposition
-    = Variable String
-    | Not Proposition
-    | And Proposition Proposition
-    | Or Proposition Proposition
-    | Implies Proposition Proposition
-    | Equiv Proposition Proposition
-    | True_
-    | False_
-
-
-type Fact
-    = Positive String
-    | Negative String
+import Types exposing (..)
 
 
 decompose : Proposition -> List (List Fact)
@@ -91,19 +73,6 @@ contradicts a b =
             False
 
 
-equal : Fact -> Fact -> Bool
-equal a b =
-    case ( a, b ) of
-        ( Positive a_, Positive b_ ) ->
-            a_ == b_
-
-        ( Negative a_, Negative b_ ) ->
-            a_ == b_
-
-        _ ->
-            False
-
-
 inconsistent : List Fact -> Bool
 inconsistent =
     List.uniquePairs
@@ -126,15 +95,11 @@ closures p =
     List.filter inconsistent (decompose p)
 
 
+-- DECISION SUPPORT
+
 reduce : List Proposition -> Proposition
 reduce =
     List.foldl And True_
-
-
-supports : List Proposition -> Proposition -> Bool
-supports l a =
-    cases (reduce (Not a :: l)) == []
-
 
 matters : Proposition -> List Proposition -> Bool
 matters a l =
@@ -161,104 +126,6 @@ unknown question information =
                 (List.filter ((/=) a) information)
 
 
-type alias Argument =
-    { support : List Support
-    , conclusion : Proposition
-    }
-
-
-type alias TrackedFact =
-    { support : List Support
-    , conclusion : Fact
-    }
-
-
-type Support
-    = Simple Proposition
-    | Complex Argument
-
-
-
--- decompose : Proposition -> List (List Fact)
-
-
-decomposeArgument : Argument -> List (List TrackedFact)
-decomposeArgument a =
-    List.map
-        (\case_ ->
-            List.map
-                (\fact ->
-                    { support = a.support
-                    , conclusion = fact
-                    }
-                )
-                case_
-        )
-        (decompose a.conclusion)
-
-
-decomposeArguments : List Argument -> List (List TrackedFact)
-decomposeArguments l =
-    List.map List.concat
-        (List.cartesianProduct
-            (List.map decomposeArgument l)
-        )
-
-
-tableau : List Argument -> List Proposition -> List (List TrackedFact)
-tableau root information =
-    case
-        List.find (\p -> matters p (List.map .conclusion root)) information
-    of
-        Just a ->
-            tableau
-                ({ support = [ Simple a ], conclusion = a } :: root)
-                (List.filter ((/=) a) information)
-
-        Nothing ->
-            decomposeArguments root
-
-
-argumentsForClosure : List TrackedFact -> List (List Support)
-argumentsForClosure l =
-    l
-        |> List.uniquePairs
-        |> List.filter (\( a, b ) -> contradicts a.conclusion b.conclusion)
-        |> List.map (\( a, b ) -> a.support ++ b.support)
-
-
-mergeSupports : List (List (List Support)) -> List (List Support)
-mergeSupports branches =
-    branches
-        |> List.cartesianProduct
-        |> List.map List.concat
-        |> List.map (List.uniqueBy supportToString)
-        |> List.map (List.sortBy supportToString)
-        |> List.uniqueBy (List.map supportToString)
-
-
-explanation : Proposition -> List Proposition -> List (List Support)
-explanation question information =
-    let
-        test =
-            Simple (Not question)
-    in
-    tableau [ { support = [ test ], conclusion = Not question } ] information
-        |> List.map argumentsForClosure
-        |> mergeSupports
-        |> List.map (List.filter (\a -> supportToString a /= supportToString test))
-
-
-factToComparable : Fact -> ( String, Int )
-factToComparable a =
-    case a of
-        Positive b ->
-            ( b, 1 )
-
-        Negative b ->
-            ( b, 0 )
-
-
 variable : Fact -> String
 variable fact =
     case fact of
@@ -272,13 +139,13 @@ variable fact =
 shortestLength : List (List a) -> Maybe Int
 shortestLength l =
     List.minimum (List.map List.length l)
-
+ 
 
 paths : List (List Fact) -> List (List Fact)
 paths branches =
     branches
         |> List.cartesianProduct
-        |> List.map (List.uniqueBy factToComparable)
+        |> List.map (List.uniqueBy string.fromFact)
 
 
 questions : List (List Fact) -> List String
@@ -289,152 +156,53 @@ questions branches =
         |> List.concat
         |> List.map variable
 
+-- EXPLANATION
 
-
-{-
-
-
-   type alias Rule =
-       { antecedence : Proposition
-       , consequence : Proposition
-       }
-
-
-   type alias Node =
-       List
-           { support : List Support
-           , conclusion : Fact
-           }
-
-
-   tableau : List (List Fact) -> Proposition -> List Rule -> List Argument
-   tableau root question rules =
-       Debug.todo ""
--}
-{-
-   argumentsForInconsistency : List Argument -> List (List Support)
-   argumentsForInconsistency arguments =
-       arguments
-           |> List.uniquePairs
-           |> List.filter (\( a, b ) -> contradicts a.conclusion b.conclusion)
-           |> List.map (\( a, b ) -> [ a.support, b.support ])
-
-
-   mergeSupports : List (List (List Support)) -> List (List Support)
-   mergeSupports l =
-       l
-           |> List.map (\branch -> branch)
-           |> List.cartesianProduct
-           |> List.map List.concat
-
-
-   node : List Argument -> List Proposition -> List (List Support)
-   node arguments rules =
-       rules
-           |> List.select
-           |> List.map
-               (\( rule, rest ) ->
-                   arguments
-                       |> List.find (\a -> inconsistent (a.conclusion :: List.concat (cases rule)))
-                       |> Maybe.map (\a -> ( rule, rest, a.support ))
-               )
-           |> Maybe.values
-           |> List.head
-           |> Maybe.map
-               (\( rule, rest, support ) ->
-                   cases rule
-                       |> List.map
-                           (\case_ ->
-                               node
-                                   (List.map
-                                       (\fact ->
-                                           { support = Complex support (Simple rule)
-                                           , conclusion = fact
-                                           }
-                                       )
-                                       case_
-                                       ++ arguments
-                                   )
-                                   rest
-                           )
-                       |> mergeSupports
-               )
-           |> Maybe.withDefault
-               (argumentsForInconsistency arguments)
-
-
-   explanation : String -> List Proposition -> List (List Argument)
-   explanation question information =
-       node [ { support = Simple (Variable "stupid support"), conclusion = Negative question } ] information
--}
-{- type alias Argument =
-       { support : List Support
-       , conclusion : Proposition
-       }
-
-
-   type alias TrackedFact =
-       { support : List Support
-       , conclusion : Fact
-       }
-
-
-   type Support
-       = Simple Proposition
-       | Complex Argument
--}
-
-
-supportToString : Support -> String
-supportToString s =
-    case s of
-        Simple p ->
-            propositionToString p
-
-        Complex a_ ->
-            argumentToString a_
-
-
-argumentToString : Argument -> String
-argumentToString a =
-    "("
-        ++ (a.support
-                |> List.map supportToString
-                |> List.sort
-                |> String.join ", "
-           )
-        ++ ", "
-        ++ propositionToString a.conclusion
-        ++ ")"
-
-
-propositionToString : Proposition -> String
-propositionToString p =
+explanation : Proposition -> List Proposition -> List Support
+explanation question information =
     let
-        join x a b =
-            "(" ++ String.join x (List.sort [ propositionToString a, propositionToString b ]) ++ ")"
+        _ =
+            Debug.log "question" question
     in
-    case p of
-        Variable a ->
-            a
+    explanation_ (decompose (Not question)) information
 
-        And a b ->
-            join " ∧ " a b
 
-        Or a b ->
-            join " ∨ " a b
+explanation_ : List (List Fact) -> List Proposition -> List Support
+explanation_ question information =
+    let
+        _ =
+            Debug.log "case question" question
+    in
+    information
+        |> List.select
+        |> List.map
+            (\( p, rest ) ->
+                let
+                    cases_ =
+                        Debug.log "cases_" (List.map List.concat (List.cartesianProduct [ question, decompose p ]))
+                in
+                if List.filter consistent cases_ == [] then
+                    Just (Simple p)
 
-        Implies a b ->
-            join " -> " a b
+                else if List.filter inconsistent cases_ /= [] then
+                    let
+                        _ =
+                            Debug.log "consistent" (List.filter consistent cases_)
+                    in
+                    case explanation_ (List.filter consistent cases_) rest of
+                        a :: l ->
+                            Just
+                                (Complex
+                                    { support = a :: l
+                                    , conclusion = p
+                                    }
+                                )
 
-        Equiv a b ->
-            join " <-> " a b
+                        [] ->
+                            Nothing
 
-        Not a ->
-            "¬" ++ propositionToString a
+                else
+                    Nothing
+            )
+        |> Maybe.values
 
-        True_ ->
-            "True"
-
-        False_ ->
-            "False"
