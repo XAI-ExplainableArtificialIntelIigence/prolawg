@@ -17,21 +17,9 @@ type Fact
     | Negative String
 
 
-type Support
+type Argument
     = Assumption Proposition
-    | Support Argument
-
-
-type alias TrackedFact =
-    { support : List Support
-    , conclusion : Fact
-    }
-
-
-type alias Argument =
-    { support : List Support
-    , conclusion : Fact
-    }
+    | Argument Proposition (List (List Argument))
 
 
 
@@ -42,43 +30,64 @@ string =
     { fromArgument = fromArgument
     , fromFact = fromFact
     , fromProposition = fromProposition
-    , fromSupport = fromSupport
-    , trackedFact = fromTrackedFact
+
+    --, fromSupport = fromSupport
     }
 
 
 fromArgument : Argument -> String
 fromArgument a =
-    "(["
-        ++ (a.support
-                |> List.map fromSupport
-                |> List.sort
-                |> String.join ", "
-           )
-        ++ "], "
-        ++ fromFact a.conclusion
-        ++ ")"
-
-
-fromTrackedFact : TrackedFact -> String
-fromTrackedFact a =
-    (a.support
-        |> List.map fromSupport
-        |> List.sort
-        |> String.join ", "
-    )
-        ++ "; "
-        ++ fromFact a.conclusion
-
-
-fromSupport : Support -> String
-fromSupport s =
-    case s of
+    case a of
         Assumption p ->
             fromProposition p
 
-        Support a_ ->
-            fromArgument a_
+        Argument p l ->
+            "(["
+                ++ (l
+                        |> List.map
+                            (List.map fromArgument
+                                >> List.sort
+                                >> String.join ", "
+                            )
+                        |> List.sort
+                        |> String.join ", "
+                   )
+                ++ "], "
+                ++ fromProposition p
+                ++ ")"
+
+
+
+--     "(["
+--         ++ (a.support
+--                 |> List.map fromSupport
+--                 -- |> List.map
+--                 --     (List.map fromSupport
+--                 --         >> List.sort
+--                 --         >> String.join ", "
+--                 --     )
+--                 |> List.sort
+--                 |> String.join ", "
+--            )
+--         ++ "], "
+--         ++ fromFact a.conclusion
+--         ++ ")"
+-- fromTrackedFact : TrackedFact -> String
+-- fromTrackedFact a =
+--     (a.support
+--         |> List.map fromSupport
+--         |> List.sort
+--         |> String.join ", "
+--     )
+--         ++ "; "
+--         ++ fromFact a.conclusion
+-- fromSupport : Support -> String
+-- fromSupport s =
+--     case s of
+--         Assumption p ->
+--             fromProposition p
+--         Support a_ ->
+--             fromArgument a_
 
 
 fromFact : Fact -> String
@@ -89,7 +98,6 @@ fromFact f =
 
         Negative a ->
             "¬" ++ a
-
 
 
 fromProposition : Proposition -> String

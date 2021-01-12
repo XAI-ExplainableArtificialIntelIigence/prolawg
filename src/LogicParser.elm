@@ -63,7 +63,7 @@ parse text =
     let
         unambiguous =
             text
-                |> String.replace " " ""
+                --|> String.replace " " ""
                 |> String.replace "<->" "↔"
                 |> String.replace ":-:" "↔"
                 |> String.replace "iff" "↔"

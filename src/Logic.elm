@@ -89,15 +89,20 @@ add a =
     List.map ((::) a)
 
 
-closes : Fact -> List (List Fact) -> Bool
+combine : List (List Fact) -> List (List Fact) -> List (List Fact)
+combine a b =
+    List.cartesianProduct [ a, b ] |> List.map List.concat
+
+
+closes : List (List Fact) -> List (List Fact) -> Bool
 closes a l =
-    impossible (add a l) && not (impossible l)
+    impossible (combine a l) && not (impossible l)
 
 
-shrinks : Fact -> List (List Fact) -> Bool
-shrinks a l =
-    List.length (List.filter inconsistent (add a l))
-        > List.length (List.filter inconsistent l)
+shrinks : List (List Fact) -> List (List Fact) -> Bool
+shrinks a b =
+    List.length (List.filter inconsistent (combine a b))
+        > List.length (List.filter inconsistent b)
 
 
 consistent : List Fact -> Bool
@@ -185,12 +190,6 @@ questions branches =
 -- EXPLANATION
 
 
-argumentsForFact : List Proposition -> Fact -> List Argument
-argumentsForFact information fact =
-    simpleArgumentsForFact fact information
-        ++ complexArgumentsForFact fact information
-
-
 negateFact : Fact -> Fact
 negateFact fact =
     case fact of
@@ -201,86 +200,76 @@ negateFact fact =
             Positive a
 
 
-simpleArgumentsForFact : Fact -> List Proposition -> List Argument
-simpleArgumentsForFact fact =
-    List.filter (\p -> impossible (add (negateFact fact) (cases p)))
-        >> List.map (\p -> { conclusion = fact, support = [ Assumption p ] })
-
-
-complexArgumentsForFact : Fact -> List Proposition -> List Argument
-complexArgumentsForFact fact information =
-    information
-        |> List.filter (\p -> shrinks (negateFact fact) (cases p))
-        |> List.map
-            (\p ->
-                argumentsForCases (List.remove p information) (List.filter consistent (add (negateFact fact) (cases p)))
-                    |> List.map
-                        (\args ->
-                            if List.length args > 0 then
-                                Just
-                                    { conclusion = fact
-                                    , support = Assumption p :: (args |> List.map Support)
-                                    }
-
-                            else
-                                Nothing
-                        )
-                    |> Maybe.values
-            )
-        |> List.concat
-
-
 negate : List (List Fact) -> List (List Fact)
 negate l =
     l |> List.cartesianProduct |> List.map (List.map negateFact)
 
 
-argumentsForCases : List Proposition -> List (List Fact) -> List (List Argument)
-argumentsForCases information l =
-    l
-        |> List.cartesianProduct
-        |> List.map (List.map negateFact)
-        |> List.map (List.map (argumentsForFact information))
-        |> List.map List.cartesianProduct
-        |> List.map List.concat
-        |> List.map (List.uniqueBy string.fromArgument)
-        |> List.uniqueBy (List.map string.fromArgument)
+factToProposition : Fact -> Proposition
+factToProposition f =
+    case f of
+        Positive a ->
+            Variable a
+
+        Negative a ->
+            Not (Variable a)
 
 
-explanation : Proposition -> List Proposition -> List (List Argument)
+argument : Proposition -> List Proposition -> Maybe Argument
+argument question information =
+    let
+        support =
+            information
+                |> List.filter (\p -> shrinks (cases (Not question)) (cases p))
+                |> List.map
+                    (\p ->
+                        let
+                            simple =
+                                if closes (cases p) (cases (Not question)) then
+                                    [ [ Assumption p ] ]
+
+                                else
+                                    []
+
+                            complex =
+                                let
+                                    _ =
+                                        Debug.log "p" p
+
+                                    premises =
+                                        cases p
+                                            |> List.filter (\c -> not (impossible (combine [ c ] (cases (Not question)))))
+                                            |> negate
+                                            |> List.map
+                                                (\c ->
+                                                    c
+                                                        |> List.map (\fact -> argument (factToProposition fact) (List.remove p information))
+                                                        
+                                                        |> Maybe.combine
+                                                )
+                                            |> Maybe.values
+                                in
+                                if List.length premises > 0 then
+                                    [ [ Argument p premises ] ]
+
+                                else
+                                    []
+                        in
+                        simple ++ complex
+                    )
+                |> List.concat
+    in
+    if List.length support > 0 then
+        Just (Argument question support)
+
+    else
+        Nothing
+
+
+explanation : Proposition -> List Proposition -> Maybe Argument
 explanation question information =
     let
         _ =
             Debug.log "?" question
     in
-    argumentsForCases information (cases (Not question))
-        |> List.map (List.filter applicable)
-
-
-
--- type Support
---     = Assumption Proposition
---     | Support Argument
--- type alias Argument =
---     { support : List Support
---     , conclusion : Fact
---     }
-
-
-applicable : Argument -> Bool
-applicable a =
-    case a.support of
-        h :: t ->
-            List.all
-                (\s ->
-                    case s of
-                        Assumption _ ->
-                            True
-
-                        Support a_ ->
-                            applicable a_
-                )
-                (h :: t)
-
-        [] ->
-            False
+    argument question information

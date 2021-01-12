@@ -39,12 +39,12 @@ type Msg
 
 init : Model
 init =
-    { rulesInput = "a /\\ b -> c\na\nb\n"
+    { rulesInput = "a \\/ c\n¬a\nb\n"
     , questionInput = "c"
     , rules =
         Just
-            [ Implies (And (Variable "a") (Variable "b")) (Variable "c")
-            , Variable "a"
+            [ Or (Variable "a") (Variable "c")
+            , Not (Variable "a")
             , Variable "b"
             ]
     , question = Just (Variable "c")
@@ -58,7 +58,7 @@ view model =
         , paddingXY 0 50
         ]
         (column
-            [ width (px 800)
+            [ width (px 600)
             , spacing 50
             , centerX
             ]
@@ -100,20 +100,9 @@ view model =
                         , spacingXY 0 20
                         ]
                         [ paragraph [] [ text "Explanations:" ]
-                        , column
-                            [ width fill
-                            , spacingXY 0 20
-                            ]
-                            (explanation question rules
-                                |> List.map
-                                    (\l ->
-                                        column
-                                            [ width fill
-                                            , spacing 2
-                                            ]
-                                            (List.map (viewExplanation 0) l)
-                                    )
-                            )
+                        , explanation question rules
+                            |> Maybe.map (viewExplanation 0)
+                            |> Maybe.withDefault none
                         ]
 
                 _ ->
@@ -137,20 +126,13 @@ viewExplanation depth a =
                 ]
     in
     column [ width fill, spacing 2 ]
-        (el
-            [ width fill
-            ]
-            (indented depth (text (string.fromFact a.conclusion)))
-            :: List.map
-                (\s ->
-                    case s of
-                        Assumption p ->
-                            indented (depth + 1) (text (string.fromProposition p))
+        (case a of
+            Assumption p ->
+                [ indented depth (text (string.fromProposition p)) ]
 
-                        Support a_ ->
-                            viewExplanation (depth + 1) a_
-                )
-                a.support
+            Argument p l ->
+                indented depth (text (string.fromProposition p))
+                    :: List.map (\block -> column [width fill] (List.map (viewExplanation (depth + 1)) block)) l
         )
 
 
