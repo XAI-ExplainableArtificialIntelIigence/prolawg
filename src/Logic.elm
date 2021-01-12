@@ -79,6 +79,27 @@ inconsistent =
         >> List.any (\( a, b ) -> contradicts a b)
 
 
+impossible : List (List Fact) -> Bool
+impossible =
+    List.all inconsistent
+
+
+add : Fact -> List (List Fact) -> List (List Fact)
+add a =
+    List.map ((::) a)
+
+
+closes : Fact -> List (List Fact) -> Bool
+closes a l =
+    impossible (add a l) && not (impossible l)
+
+
+shrinks : Fact -> List (List Fact) -> Bool
+shrinks a l =
+    List.length (List.filter inconsistent (add a l))
+        > List.length (List.filter inconsistent l)
+
+
 consistent : List Fact -> Bool
 consistent =
     List.uniquePairs
@@ -95,11 +116,14 @@ closures p =
     List.filter inconsistent (decompose p)
 
 
+
 -- DECISION SUPPORT
+
 
 reduce : List Proposition -> Proposition
 reduce =
     List.foldl And True_
+
 
 matters : Proposition -> List Proposition -> Bool
 matters a l =
@@ -139,7 +163,7 @@ variable fact =
 shortestLength : List (List a) -> Maybe Int
 shortestLength l =
     List.minimum (List.map List.length l)
- 
+
 
 paths : List (List Fact) -> List (List Fact)
 paths branches =
@@ -156,53 +180,107 @@ questions branches =
         |> List.concat
         |> List.map variable
 
+
+
 -- EXPLANATION
 
-explanation : Proposition -> List Proposition -> List Support
+
+argumentsForFact : List Proposition -> Fact -> List Argument
+argumentsForFact information fact =
+    simpleArgumentsForFact fact information
+        ++ complexArgumentsForFact fact information
+
+
+negateFact : Fact -> Fact
+negateFact fact =
+    case fact of
+        Positive a ->
+            Negative a
+
+        Negative a ->
+            Positive a
+
+
+simpleArgumentsForFact : Fact -> List Proposition -> List Argument
+simpleArgumentsForFact fact =
+    List.filter (\p -> impossible (add (negateFact fact) (cases p)))
+        >> List.map (\p -> { conclusion = fact, support = [ Assumption p ] })
+
+
+complexArgumentsForFact : Fact -> List Proposition -> List Argument
+complexArgumentsForFact fact information =
+    information
+        |> List.filter (\p -> shrinks (negateFact fact) (cases p))
+        |> List.map
+            (\p ->
+                argumentsForCases (List.remove p information) (List.filter consistent (add (negateFact fact) (cases p)))
+                    |> List.map
+                        (\args ->
+                            if List.length args > 0 then
+                                Just
+                                    { conclusion = fact
+                                    , support = Assumption p :: (args |> List.map Support)
+                                    }
+
+                            else
+                                Nothing
+                        )
+                    |> Maybe.values
+            )
+        |> List.concat
+
+
+negate : List (List Fact) -> List (List Fact)
+negate l =
+    l |> List.cartesianProduct |> List.map (List.map negateFact)
+
+
+argumentsForCases : List Proposition -> List (List Fact) -> List (List Argument)
+argumentsForCases information l =
+    l
+        |> List.cartesianProduct
+        |> List.map (List.map negateFact)
+        |> List.map (List.map (argumentsForFact information))
+        |> List.map List.cartesianProduct
+        |> List.map List.concat
+        |> List.map (List.uniqueBy string.fromArgument)
+        |> List.uniqueBy (List.map string.fromArgument)
+
+
+explanation : Proposition -> List Proposition -> List (List Argument)
 explanation question information =
     let
         _ =
-            Debug.log "question" question
+            Debug.log "?" question
     in
-    explanation_ (decompose (Not question)) information
+    argumentsForCases information (cases (Not question))
+        |> List.map (List.filter applicable)
 
 
-explanation_ : List (List Fact) -> List Proposition -> List Support
-explanation_ question information =
-    let
-        _ =
-            Debug.log "case question" question
-    in
-    information
-        |> List.select
-        |> List.map
-            (\( p, rest ) ->
-                let
-                    cases_ =
-                        Debug.log "cases_" (List.map List.concat (List.cartesianProduct [ question, decompose p ]))
-                in
-                if List.filter consistent cases_ == [] then
-                    Just (Simple p)
 
-                else if List.filter inconsistent cases_ /= [] then
-                    let
-                        _ =
-                            Debug.log "consistent" (List.filter consistent cases_)
-                    in
-                    case explanation_ (List.filter consistent cases_) rest of
-                        a :: l ->
-                            Just
-                                (Complex
-                                    { support = a :: l
-                                    , conclusion = p
-                                    }
-                                )
+-- type Support
+--     = Assumption Proposition
+--     | Support Argument
+-- type alias Argument =
+--     { support : List Support
+--     , conclusion : Fact
+--     }
 
-                        [] ->
-                            Nothing
 
-                else
-                    Nothing
-            )
-        |> Maybe.values
+applicable : Argument -> Bool
+applicable a =
+    case a.support of
+        h :: t ->
+            List.all
+                (\s ->
+                    case s of
+                        Assumption _ ->
+                            True
 
+                        Support a_ ->
+                            applicable a_
+                )
+                (h :: t)
+
+        [] ->
+            False

@@ -18,8 +18,8 @@ type Fact
 
 
 type Support
-    = Simple Proposition
-    | Complex Argument
+    = Assumption Proposition
+    | Support Argument
 
 
 type alias TrackedFact =
@@ -30,7 +30,7 @@ type alias TrackedFact =
 
 type alias Argument =
     { support : List Support
-    , conclusion : Proposition
+    , conclusion : Fact
     }
 
 
@@ -47,32 +47,38 @@ string =
     }
 
 
-fromSupported : (a -> String) -> { support : List Support, conclusion : a } -> String
-fromSupported conclusionToString a =
-    "("
+fromArgument : Argument -> String
+fromArgument a =
+    "(["
         ++ (a.support
                 |> List.map fromSupport
                 |> List.sort
                 |> String.join ", "
            )
-        ++ ", "
-        ++ conclusionToString a.conclusion
+        ++ "], "
+        ++ fromFact a.conclusion
         ++ ")"
+
+
+fromTrackedFact : TrackedFact -> String
+fromTrackedFact a =
+    (a.support
+        |> List.map fromSupport
+        |> List.sort
+        |> String.join ", "
+    )
+        ++ "; "
+        ++ fromFact a.conclusion
 
 
 fromSupport : Support -> String
 fromSupport s =
     case s of
-        Simple p ->
+        Assumption p ->
             fromProposition p
 
-        Complex a_ ->
+        Support a_ ->
             fromArgument a_
-
-
-fromArgument : Argument -> String
-fromArgument =
-    fromSupported fromProposition
 
 
 fromFact : Fact -> String
@@ -84,10 +90,6 @@ fromFact f =
         Negative a ->
             "¬" ++ a
 
-
-fromTrackedFact : TrackedFact -> String
-fromTrackedFact =
-    fromSupported fromFact
 
 
 fromProposition : Proposition -> String

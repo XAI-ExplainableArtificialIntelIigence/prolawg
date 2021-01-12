@@ -18,7 +18,7 @@ equal a b =
 supports : List Proposition -> Proposition -> Bool
 supports l a =
     cases (reduce (Not a :: l)) == []
-    
+
 decomposeArgument : Argument -> List (List TrackedFact)
 decomposeArgument a =
     List.map
@@ -96,11 +96,10 @@ negateFact fact =
             Positive a
 
 
-negate : List (List Fact) -> List (List Fact)
-negate l =
-    l |> List.cartesianProduct |> List.map (List.map negateFact)
 
-    factToProposition : Fact -> Proposition
+
+
+factToProposition : Fact -> Proposition
 factToProposition f =
     case f of
         Positive a ->
@@ -109,3 +108,65 @@ factToProposition f =
         Negative a ->
             Not (Variable a)
 
+
+explanation : Proposition -> List Proposition -> Maybe (List (List Support))
+explanation question information =
+    let
+        _ =
+            Debug.log "?" question
+    in
+    explanation_ (decompose (Not question)) information
+
+
+explanation_ : List (List Fact) -> List Proposition -> Maybe (List (List Support))
+explanation_ question information =
+    if List.filter consistent question == [] then
+        Nothing
+
+    else
+        Just
+            (question
+                |> List.filter consistent
+                |> List.map (supportForCase information)
+                |> List.concat
+            )
+
+
+supportForCase : List Proposition -> List Fact -> List (List Support)
+supportForCase information case_ =
+    case_ |> List.map (supportForFact information)
+
+
+supportForFact : List Proposition -> Fact -> List Support
+supportForFact information fact =
+    information
+        |> List.select
+        |> List.map
+            (\( p, rest ) ->
+                case explanation_ (List.map ((::) fact) (cases p)) rest of
+                    Nothing ->
+                        Simple p
+
+                    Just l ->
+                        Complex { support = l, conclusion = fact }
+            )
+complexArgumentsForFact : Fact -> List Proposition -> List Argument
+complexArgumentsForFact fact =
+    List.filter (\p -> shrinks (negateFact fact) (cases p))
+        >> List.select
+        >> List.map
+            (\( p, rest ) ->
+                List.filter consistent (add (negateFact fact) (cases p))
+                    |> List.map
+                        (List.map (argumentsForFact rest)
+                            >> List.cartesianProduct
+                            >> List.map
+                                (\args ->
+                                    { conclusion = fact
+                                    , support = Simple p :: (args |> List.map Complex)
+                                    }
+                                )
+                        )
+                    |> List.concat
+            )
+        >> List.concat
