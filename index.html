@@ -4616,16 +4616,17 @@ var $elm$core$Set$toList = function (_v0) {
 var $elm$core$Basics$EQ = {$: 'EQ'};
 var $elm$core$Basics$GT = {$: 'GT'};
 var $elm$core$Basics$LT = {$: 'LT'};
+var $author$project$Types$And = F2(
+	function (a, b) {
+		return {$: 'And', a: a, b: b};
+	});
+var $author$project$Types$Implies = F2(
+	function (a, b) {
+		return {$: 'Implies', a: a, b: b};
+	});
 var $elm$core$Maybe$Just = function (a) {
 	return {$: 'Just', a: a};
 };
-var $author$project$Types$Not = function (a) {
-	return {$: 'Not', a: a};
-};
-var $author$project$Types$Or = F2(
-	function (a, b) {
-		return {$: 'Or', a: a, b: b};
-	});
 var $author$project$Types$Variable = function (a) {
 	return {$: 'Variable', a: a};
 };
@@ -4637,14 +4638,16 @@ var $author$project$Main$init = {
 		_List_fromArray(
 			[
 				A2(
-				$author$project$Types$Or,
-				$author$project$Types$Variable('a'),
+				$author$project$Types$Implies,
+				A2(
+					$author$project$Types$And,
+					$author$project$Types$Variable('a'),
+					$author$project$Types$Variable('b')),
 				$author$project$Types$Variable('c')),
-				$author$project$Types$Not(
-				$author$project$Types$Variable('a')),
+				$author$project$Types$Variable('a'),
 				$author$project$Types$Variable('b')
 			])),
-	rulesInput: 'a \\/ c\n¬a\nb\n'
+	rulesInput: 'a /\\ b -> c\na\nb\n'
 };
 var $elm$core$Result$Err = function (a) {
 	return {$: 'Err', a: a};
@@ -5493,14 +5496,13 @@ var $elm$parser$Parser$Advanced$keeper = F2(
 		return A3($elm$parser$Parser$Advanced$map2, $elm$core$Basics$apL, parseFunc, parseArg);
 	});
 var $elm$parser$Parser$keeper = $elm$parser$Parser$Advanced$keeper;
-var $author$project$Types$And = F2(
-	function (a, b) {
-		return {$: 'And', a: a, b: b};
-	});
 var $author$project$Types$False_ = {$: 'False_'};
-var $author$project$Types$Implies = F2(
+var $author$project$Types$Not = function (a) {
+	return {$: 'Not', a: a};
+};
+var $author$project$Types$Or = F2(
 	function (a, b) {
-		return {$: 'Implies', a: a, b: b};
+		return {$: 'Or', a: a, b: b};
 	});
 var $elm$parser$Parser$Advanced$map = F2(
 	function (func, _v0) {
@@ -12313,34 +12315,28 @@ var $author$project$Logic$argument = F2(
 								function (c) {
 									return $elm_community$maybe_extra$Maybe$Extra$combine(
 										A2(
-											$elm$core$Debug$log,
-											'args',
-											A2(
-												$elm$core$List$map,
-												function (fact) {
-													return A2(
-														$author$project$Logic$argument,
-														$author$project$Logic$factToProposition(fact),
-														A2($elm_community$list_extra$List$Extra$remove, p, information));
-												},
-												c)));
-								},
-								A2(
-									$elm$core$Debug$log,
-									'cases',
-									$author$project$Logic$negate(
-										A2(
-											$elm$core$List$filter,
-											function (c) {
-												return !$author$project$Logic$impossible(
-													A2(
-														$author$project$Logic$combine,
-														_List_fromArray(
-															[c]),
-														$author$project$Logic$cases(
-															$author$project$Types$Not(question))));
+											$elm$core$List$map,
+											function (fact) {
+												return A2(
+													$author$project$Logic$argument,
+													$author$project$Logic$factToProposition(fact),
+													A2($elm_community$list_extra$List$Extra$remove, p, information));
 											},
-											$author$project$Logic$cases(p))))));
+											c));
+								},
+								$author$project$Logic$negate(
+									A2(
+										$elm$core$List$filter,
+										function (c) {
+											return !$author$project$Logic$impossible(
+												A2(
+													$author$project$Logic$combine,
+													_List_fromArray(
+														[c]),
+													$author$project$Logic$cases(
+														$author$project$Types$Not(question))));
+										},
+										$author$project$Logic$cases(p)))));
 						var _v0 = A2($elm$core$Debug$log, 'p', p);
 						return ($elm$core$List$length(premises) > 0) ? _List_fromArray(
 							[

@@ -16,10 +16,13 @@ type Fact
     = Positive String
     | Negative String
 
-
 type Argument
     = Assumption Proposition
     | Argument Proposition (List (List Argument))
+
+type OpenArgument
+    = OpenAssumption Proposition
+    | OpenArgument Proposition (List (List (Maybe OpenArgument)))
 
 
 

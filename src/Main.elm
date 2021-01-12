@@ -39,12 +39,12 @@ type Msg
 
 init : Model
 init =
-    { rulesInput = "a \\/ c\n¬a\nb\n"
+    { rulesInput = "a /\\ b -> c\na\nb\n"
     , questionInput = "c"
     , rules =
         Just
-            [ Or (Variable "a") (Variable "c")
-            , Not (Variable "a")
+            [ Implies (And (Variable "a") (Variable "b")) (Variable "c")
+            , Variable "a"
             , Variable "b"
             ]
     , question = Just (Variable "c")
@@ -132,7 +132,7 @@ viewExplanation depth a =
 
             Argument p l ->
                 indented depth (text (string.fromProposition p))
-                    :: List.map (\block -> column [width fill] (List.map (viewExplanation (depth + 1)) block)) l
+                    :: List.map (\block -> column [ width fill ] (List.map (viewExplanation (depth + 1)) block)) l
         )
 
 
