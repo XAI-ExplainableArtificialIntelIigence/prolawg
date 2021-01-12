@@ -5395,8 +5395,6 @@ var $elm_community$maybe_extra$Maybe$Extra$combine = A2(
 	$elm$core$List$foldr,
 	$elm$core$Maybe$map2($elm$core$List$cons),
 	$elm$core$Maybe$Just(_List_Nil));
-var $author$project$Main$employment = _List_fromArray(
-	['Employed', '¬LessThanTenEmployees', '¬ReachedOldAgeInsurance', 'MilitaryOfficial', 'WorkedForAtLeastTwentySixWeeks', 'Employed -> CanMakeRequestForChange', 'Employed /\\ LessThanTenEmployees -> ¬CanMakeRequestForChange', 'Employed /\\ ReachedOldAgeInsurance -> ¬CanMakeRequestForChange', 'Employed /\\ MilitaryOfficial -> ¬CanMakeRequestForChange']);
 var $elm$core$List$filter = F2(
 	function (isGood, list) {
 		return A3(
@@ -6438,19 +6436,23 @@ var $author$project$Main$update = F2(
 						questionInput: s
 					});
 			default:
+				var _v1 = msg.a;
+				var question = _v1.a;
+				var rules = _v1.b;
 				return _Utils_update(
 					model,
 					{
-						question: $elm$core$Maybe$Just(
-							$author$project$Types$Variable('CanMakeRequestForChange')),
-						questionInput: 'CanMakeRequestForChange',
+						question: $author$project$LogicParser$parse(question),
+						questionInput: question,
 						rules: $elm_community$maybe_extra$Maybe$Extra$combine(
-							A2($elm$core$List$map, $author$project$LogicParser$parse, $author$project$Main$employment)),
-						rulesInput: A2($elm$core$String$join, '\n', $author$project$Main$employment) + '\n'
+							A2($elm$core$List$map, $author$project$LogicParser$parse, rules)),
+						rulesInput: A2($elm$core$String$join, '\n', rules) + '\n'
 					});
 		}
 	});
-var $author$project$Main$LoadEmploymentExample = {$: 'LoadEmploymentExample'};
+var $author$project$Main$LoadExample = function (a) {
+	return {$: 'LoadExample', a: a};
+};
 var $author$project$Main$NewQuestion = function (a) {
 	return {$: 'NewQuestion', a: a};
 };
@@ -11935,6 +11937,10 @@ var $mdgriffith$elm_ui$Element$column = F2(
 						attrs))),
 			$mdgriffith$elm_ui$Internal$Model$Unkeyed(children));
 	});
+var $author$project$Main$disj = _Utils_Tuple2(
+	'c',
+	_List_fromArray(
+		['a or b -> c', 'a or b']));
 var $mdgriffith$elm_ui$Element$el = F2(
 	function (attrs, child) {
 		return A4(
@@ -11952,6 +11958,10 @@ var $mdgriffith$elm_ui$Element$el = F2(
 				_List_fromArray(
 					[child])));
 	});
+var $author$project$Main$employment = _Utils_Tuple2(
+	'CanMakeRequestForChange',
+	_List_fromArray(
+		['Employed', '¬LessThanTenEmployees', '¬ReachedOldAgeInsurance', 'MilitaryOfficial', 'WorkedForAtLeastTwentySixWeeks', 'Employed -> CanMakeRequestForChange', 'Employed /\\ LessThanTenEmployees -> ¬CanMakeRequestForChange', 'Employed /\\ ReachedOldAgeInsurance -> ¬CanMakeRequestForChange', 'Employed /\\ MilitaryOfficial -> ¬CanMakeRequestForChange']));
 var $author$project$Types$Argument = F2(
 	function (a, b) {
 		return {$: 'Argument', a: a, b: b};
@@ -12097,7 +12107,9 @@ var $author$project$Logic$decompose = function (p) {
 					_List_fromArray(
 						[
 							$author$project$Logic$decompose(a),
-							$author$project$Logic$decompose(b)
+							$author$project$Logic$decompose(b),
+							$author$project$Logic$decompose(
+							A2($author$project$Types$And, a, b))
 						]));
 			case 'Implies':
 				var a = p.a;
@@ -12121,14 +12133,7 @@ var $author$project$Logic$decompose = function (p) {
 				return _List_fromArray(
 					[_List_Nil]);
 			case 'False_':
-				return _List_fromArray(
-					[
-						_List_fromArray(
-						[
-							$author$project$Types$Positive('x'),
-							$author$project$Types$Negative('x')
-						])
-					]);
+				return _List_Nil;
 			default:
 				switch (p.a.$) {
 					case 'Variable':
@@ -12231,17 +12236,6 @@ var $author$project$Logic$closes = F2(
 		return $author$project$Logic$impossible(
 			A2($author$project$Logic$combine, a, l)) && (!$author$project$Logic$impossible(l));
 	});
-var $author$project$Logic$factToProposition = function (f) {
-	if (f.$ === 'Positive') {
-		var a = f.a;
-		return $author$project$Types$Variable(a);
-	} else {
-		var a = f.a;
-		return $author$project$Types$Not(
-			$author$project$Types$Variable(a));
-	}
-};
-var $elm$core$Debug$log = _Debug_log;
 var $author$project$Logic$negateFact = function (fact) {
 	if (fact.$ === 'Positive') {
 		var a = fact.a;
@@ -12291,80 +12285,56 @@ var $elm_community$maybe_extra$Maybe$Extra$cons = F2(
 		}
 	});
 var $elm_community$maybe_extra$Maybe$Extra$values = A2($elm$core$List$foldr, $elm_community$maybe_extra$Maybe$Extra$cons, _List_Nil);
-var $author$project$Logic$argument = F2(
+var $author$project$Logic$arguments = F2(
 	function (question, information) {
-		var support = $elm$core$List$concat(
+		return $elm_community$maybe_extra$Maybe$Extra$values(
 			A2(
 				$elm$core$List$map,
 				function (p) {
-					var simple = A2(
+					if (A2(
 						$author$project$Logic$closes,
 						$author$project$Logic$cases(p),
-						$author$project$Logic$cases(
-							$author$project$Types$Not(question))) ? _List_fromArray(
-						[
-							_List_fromArray(
-							[
-								$author$project$Types$Assumption(p)
-							])
-						]) : _List_Nil;
-					var complex = function () {
-						var premises = $elm_community$maybe_extra$Maybe$Extra$values(
-							A2(
-								$elm$core$List$map,
-								function (c) {
-									return $elm_community$maybe_extra$Maybe$Extra$combine(
-										A2(
-											$elm$core$List$map,
-											function (fact) {
-												return A2(
-													$author$project$Logic$argument,
-													$author$project$Logic$factToProposition(fact),
-													A2($elm_community$list_extra$List$Extra$remove, p, information));
-											},
-											c));
-								},
-								$author$project$Logic$negate(
-									A2(
-										$elm$core$List$filter,
-										function (c) {
-											return !$author$project$Logic$impossible(
-												A2(
-													$author$project$Logic$combine,
-													_List_fromArray(
-														[c]),
-													$author$project$Logic$cases(
-														$author$project$Types$Not(question))));
-										},
-										$author$project$Logic$cases(p)))));
-						var _v0 = A2($elm$core$Debug$log, 'p', p);
-						return ($elm$core$List$length(premises) > 0) ? _List_fromArray(
-							[
-								_List_fromArray(
-								[
-									A2($author$project$Types$Argument, p, premises)
-								])
-							]) : _List_Nil;
-					}();
-					return _Utils_ap(simple, complex);
+						$author$project$Logic$negate(question))) {
+						return $elm$core$Maybe$Just(
+							$author$project$Types$Assumption(p));
+					} else {
+						var subarguments = A2(
+							$author$project$Logic$arguments,
+							$author$project$Logic$negate(
+								A2(
+									$elm$core$List$filter,
+									function (c) {
+										return !$author$project$Logic$impossible(
+											A2(
+												$author$project$Logic$combine,
+												_List_fromArray(
+													[c]),
+												$author$project$Logic$negate(question)));
+									},
+									$author$project$Logic$cases(p))),
+							A2($elm_community$list_extra$List$Extra$remove, p, information));
+						return ($elm$core$List$length(subarguments) > 0) ? $elm$core$Maybe$Just(
+							A2($author$project$Types$Argument, p, subarguments)) : $elm$core$Maybe$Nothing;
+					}
 				},
 				A2(
 					$elm$core$List$filter,
 					function (p) {
 						return A2(
 							$author$project$Logic$shrinks,
-							$author$project$Logic$cases(
-								$author$project$Types$Not(question)),
+							$author$project$Logic$negate(question),
 							$author$project$Logic$cases(p));
 					},
 					information)));
-		return ($elm$core$List$length(support) > 0) ? $elm$core$Maybe$Just(
-			A2($author$project$Types$Argument, question, support)) : $elm$core$Maybe$Nothing;
 	});
+var $elm$core$Debug$log = _Debug_log;
 var $author$project$Logic$explanation = F2(
 	function (question, information) {
 		var _v0 = A2($elm$core$Debug$log, '?', question);
-		return A2($author$project$Logic$argument, question, information);
+		return A2(
+			$author$project$Logic$arguments,
+			$author$project$Logic$cases(question),
+			information);
 	});
 var $mdgriffith$elm_ui$Internal$Model$Fill = function (a) {
 	return {$: 'Fill', a: a};
@@ -13807,7 +13777,14 @@ var $author$project$Types$fromProposition = function (p) {
 		case 'Implies':
 			var a = p.a;
 			var b = p.b;
-			return A3(join, ' -> ', a, b);
+			return '(' + (A2(
+				$elm$core$String$join,
+				' -> ',
+				_List_fromArray(
+					[
+						$author$project$Types$fromProposition(a),
+						$author$project$Types$fromProposition(b)
+					])) + ')');
 		case 'Equiv':
 			var a = p.a;
 			var b = p.b;
@@ -13832,16 +13809,7 @@ var $author$project$Types$fromArgument = function (a) {
 			$elm$core$String$join,
 			', ',
 			$elm$core$List$sort(
-				A2(
-					$elm$core$List$map,
-					A2(
-						$elm$core$Basics$composeR,
-						$elm$core$List$map($author$project$Types$fromArgument),
-						A2(
-							$elm$core$Basics$composeR,
-							$elm$core$List$sort,
-							$elm$core$String$join(', '))),
-					l))) + ('], ' + ($author$project$Types$fromProposition(p) + ')')));
+				A2($elm$core$List$map, $author$project$Types$fromArgument, l))) + ('], ' + ($author$project$Types$fromProposition(p) + ')')));
 	}
 };
 var $author$project$Types$fromFact = function (f) {
@@ -13917,18 +13885,7 @@ var $author$project$Main$viewExplanation = F2(
 								$author$project$Types$string.fromProposition(p))),
 						A2(
 							$elm$core$List$map,
-							function (block) {
-								return A2(
-									$mdgriffith$elm_ui$Element$column,
-									_List_fromArray(
-										[
-											$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill)
-										]),
-									A2(
-										$elm$core$List$map,
-										$author$project$Main$viewExplanation(depth + 1),
-										block));
-							},
+							$author$project$Main$viewExplanation(depth + 1),
 							l));
 				}
 			}());
@@ -13980,10 +13937,22 @@ var $author$project$Main$view = function (model) {
 						[
 							$mdgriffith$elm_ui$Element$Font$color(
 							A3($mdgriffith$elm_ui$Element$rgb, 0, 0, 1)),
-							$mdgriffith$elm_ui$Element$Events$onClick($author$project$Main$LoadEmploymentExample),
+							$mdgriffith$elm_ui$Element$Events$onClick(
+							$author$project$Main$LoadExample($author$project$Main$employment)),
 							$mdgriffith$elm_ui$Element$pointer
 						]),
 					$mdgriffith$elm_ui$Element$text('Load employment law example.')),
+					A2(
+					$mdgriffith$elm_ui$Element$el,
+					_List_fromArray(
+						[
+							$mdgriffith$elm_ui$Element$Font$color(
+							A3($mdgriffith$elm_ui$Element$rgb, 0, 0, 1)),
+							$mdgriffith$elm_ui$Element$Events$onClick(
+							$author$project$Main$LoadExample($author$project$Main$disj)),
+							$mdgriffith$elm_ui$Element$pointer
+						]),
+					$mdgriffith$elm_ui$Element$text('Load disjunction example.')),
 					A2(
 					$mdgriffith$elm_ui$Element$Input$text,
 					_List_fromArray(
@@ -14027,10 +13996,10 @@ var $author$project$Main$view = function (model) {
 											$mdgriffith$elm_ui$Element$text('Explanations:')
 										])),
 									A2(
-									$elm$core$Maybe$withDefault,
-									$mdgriffith$elm_ui$Element$none,
+									$mdgriffith$elm_ui$Element$column,
+									_List_Nil,
 									A2(
-										$elm$core$Maybe$map,
+										$elm$core$List$map,
 										$author$project$Main$viewExplanation(0),
 										A2($author$project$Logic$explanation, question, rules)))
 								]));

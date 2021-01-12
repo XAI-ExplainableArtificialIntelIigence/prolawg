@@ -21,7 +21,12 @@ decompose p =
                 )
 
         Or a b ->
-            List.concat [ decompose a, decompose b ]
+            List.concat
+                [ decompose a
+                , decompose b
+
+                , decompose (And a b)
+                ]
 
         Implies a b ->
             decompose (Or (Not a) b)
@@ -33,7 +38,7 @@ decompose p =
             [ [] ]
 
         False_ ->
-            [ [ Positive "x", Negative "x" ] ]
+            []
 
         Not (Variable a) ->
             [ [ Negative a ] ]
@@ -215,61 +220,44 @@ factToProposition f =
             Not (Variable a)
 
 
-argument : Proposition -> List Proposition -> Maybe Argument
-argument question information =
-    let
-        support =
-            information
-                |> List.filter (\p -> shrinks (cases (Not question)) (cases p))
-                |> List.map
-                    (\p ->
-                        let
-                            simple =
-                                if closes (cases p) (cases (Not question)) then
-                                    [ [ Assumption p ] ]
-
-                                else
-                                    []
-
-                            complex =
-                                let
-                                    _ =
-                                        Debug.log "p" p
-
-                                    premises =
-                                        cases p
-                                            |> List.filter (\c -> not (impossible (combine [ c ] (cases (Not question)))))
-                                            |> negate
-                                            |> List.map
-                                                (\c ->
-                                                    c
-                                                        |> List.map (\fact -> argument (factToProposition fact) (List.remove p information))
-                                                        
-                                                        |> Maybe.combine
-                                                )
-                                            |> Maybe.values
-                                in
-                                if List.length premises > 0 then
-                                    [ [ Argument p premises ] ]
-
-                                else
-                                    []
-                        in
-                        simple ++ complex
-                    )
-                |> List.concat
-    in
-    if List.length support > 0 then
-        Just (Argument question support)
-
-    else
-        Nothing
+powerset : List a -> List (List a)
+powerset =
+    List.foldr (\x acc -> acc ++ List.map ((::) x) acc) [ [] ]
 
 
-explanation : Proposition -> List Proposition -> Maybe Argument
+arguments : List (List Fact) -> List Proposition -> List Argument
+arguments question information =
+    information
+        |> List.filter (\p -> shrinks (negate question) (cases p))
+        |> List.map
+            (\p ->
+                if closes (cases p) (negate question) then
+                    Just (Assumption p)
+
+                else
+                    let
+                        subarguments =
+                            information
+                                |> List.remove p
+                                |> arguments
+                                    (cases p
+                                        |> List.filter (\c -> not (impossible (combine [ c ] (negate question))))
+                                        |> negate
+                                    )
+                    in
+                    if List.length subarguments > 0 then
+                        Just (Argument p subarguments)
+
+                    else
+                        Nothing
+            )
+        |> Maybe.values
+
+
+explanation : Proposition -> List Proposition -> List Argument
 explanation question information =
     let
         _ =
             Debug.log "?" question
     in
-    argument question information
+    arguments (cases question) information

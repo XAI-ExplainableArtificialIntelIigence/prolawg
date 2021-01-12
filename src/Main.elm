@@ -1,4 +1,4 @@
-module Main exposing (..) 
+module Main exposing (..)
 
 import Browser exposing (sandbox)
 import Element exposing (..)
@@ -34,7 +34,7 @@ type alias Model =
 type Msg
     = NewRules String
     | NewQuestion String
-    | LoadEmploymentExample
+    | LoadExample ( String, List String )
 
 
 init : Model
@@ -77,10 +77,16 @@ view model =
                     none
             , el
                 [ Font.color (rgb 0 0 1)
-                , Events.onClick LoadEmploymentExample
+                , Events.onClick (LoadExample employment)
                 , pointer
                 ]
                 (text "Load employment law example.")
+            , el
+                [ Font.color (rgb 0 0 1)
+                , Events.onClick (LoadExample disj)
+                , pointer
+                ]
+                (text "Load disjunction example.")
             , Input.text [ logicFont ]
                 { onChange = NewQuestion
                 , text = model.questionInput
@@ -100,9 +106,10 @@ view model =
                         , spacingXY 0 20
                         ]
                         [ paragraph [] [ text "Explanations:" ]
-                        , explanation question rules
-                            |> Maybe.map (viewExplanation 0)
-                            |> Maybe.withDefault none
+                        , column []
+                            (explanation question rules
+                                |> List.map (viewExplanation 0)
+                            )
                         ]
 
                 _ ->
@@ -125,14 +132,17 @@ viewExplanation depth a =
                     [ x ]
                 ]
     in
-    column [ width fill, spacing 2 ]
+    column
+        [ width fill
+        , spacing 2
+        ]
         (case a of
             Assumption p ->
                 [ indented depth (text (string.fromProposition p)) ]
 
             Argument p l ->
                 indented depth (text (string.fromProposition p))
-                    :: List.map (\block -> column [ width fill ] (List.map (viewExplanation (depth + 1)) block)) l
+                    :: List.map (viewExplanation (depth + 1)) l
         )
 
 
@@ -172,23 +182,33 @@ update msg model =
                 , question = parse s
             }
 
-        LoadEmploymentExample ->
+        LoadExample ( question, rules ) ->
             { model
-                | rulesInput = String.join "\n" employment ++ "\n"
-                , rules = Maybe.combine (List.map parse employment)
-                , questionInput = "CanMakeRequestForChange"
-                , question = Just (Variable "CanMakeRequestForChange")
+                | rulesInput = String.join "\n" rules ++ "\n"
+                , rules = Maybe.combine (List.map parse rules)
+                , questionInput = question
+                , question = parse question
             }
 
 
 employment =
-    [ "Employed"
-    , "¬LessThanTenEmployees"
-    , "¬ReachedOldAgeInsurance"
-    , "MilitaryOfficial"
-    , "WorkedForAtLeastTwentySixWeeks"
-    , "Employed -> CanMakeRequestForChange"
-    , "Employed /\\ LessThanTenEmployees -> ¬CanMakeRequestForChange"
-    , "Employed /\\ ReachedOldAgeInsurance -> ¬CanMakeRequestForChange"
-    , "Employed /\\ MilitaryOfficial -> ¬CanMakeRequestForChange"
-    ]
+    ( "CanMakeRequestForChange"
+    , [ "Employed"
+      , "¬LessThanTenEmployees"
+      , "¬ReachedOldAgeInsurance"
+      , "MilitaryOfficial"
+      , "WorkedForAtLeastTwentySixWeeks"
+      , "Employed -> CanMakeRequestForChange"
+      , "Employed /\\ LessThanTenEmployees -> ¬CanMakeRequestForChange"
+      , "Employed /\\ ReachedOldAgeInsurance -> ¬CanMakeRequestForChange"
+      , "Employed /\\ MilitaryOfficial -> ¬CanMakeRequestForChange"
+      ]
+    )
+
+
+disj =
+    ( "c"
+    , [ "a or b -> c"
+      , "a or b"
+      ]
+    )

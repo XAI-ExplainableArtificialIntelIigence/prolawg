@@ -16,13 +16,15 @@ type Fact
     = Positive String
     | Negative String
 
+
 type Argument
     = Assumption Proposition
-    | Argument Proposition (List (List Argument))
+    | Argument Proposition (List Argument)
 
-type OpenArgument
-    = OpenAssumption Proposition
-    | OpenArgument Proposition (List (List (Maybe OpenArgument)))
+
+-- type OpenArgument
+--     = OpenAssumption Proposition
+--     | OpenArgument Proposition (List (List (Maybe OpenArgument)))
 
 
 
@@ -47,11 +49,12 @@ fromArgument a =
         Argument p l ->
             "(["
                 ++ (l
-                        |> List.map
-                            (List.map fromArgument
-                                >> List.sort
-                                >> String.join ", "
-                            )
+                        -- |> List.map
+                        --     (List.map fromArgument
+                        --         >> List.sort
+                        --         >> String.join ", "
+                        --     )
+                        |> List.map fromArgument
                         |> List.sort
                         |> String.join ", "
                    )
@@ -120,7 +123,7 @@ fromProposition p =
             join " ∨ " a b
 
         Implies a b ->
-            join " -> " a b
+            "(" ++ String.join " -> " [ fromProposition a, fromProposition b ] ++ ")"
 
         Equiv a b ->
             join " <-> " a b
