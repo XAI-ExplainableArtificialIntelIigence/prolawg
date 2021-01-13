@@ -1,9 +1,9 @@
-module LogicParser exposing (..)
+module Logic.Parser exposing (..)
 
+import Logic.Core exposing (..)
 import Parser exposing ((|.), (|=), Parser, int, keyword, oneOf, spaces, symbol)
 import Pratt exposing (constant, infixLeft, prefix)
 import Set
-import Types exposing (..)
 
 
 logicExpression : Parser Proposition
@@ -26,7 +26,7 @@ logicExpression =
                     [ "→", "->", "-:", "implies", "Implies", "IMPLIES" ]
                 ++ List.map (\a -> infixLeft 2 (symbol a) (\p q -> Implies q p))
                     [ "←", "<-", ":-", "if", "If", "IF" ]
-                ++ List.map (\a -> infixLeft 1 (symbol a) (\p q -> And (Implies p q) (Implies q p)))
+                ++ List.map (\a -> infixLeft 1 (symbol a) Equiv)
                     [ "↔" ]
         , spaces = Parser.spaces
         }
@@ -58,8 +58,8 @@ logic =
         |. Parser.end
 
 
-parseProposition : String -> Maybe Proposition
-parseProposition text =
+parse : String -> Maybe Proposition
+parse text =
     let
         unambiguous =
             text
@@ -106,6 +106,6 @@ rankedLogic =
         ]
 
 
-parse : String -> Maybe ( Int, Proposition )
-parse =
+parseRanked : String -> Maybe ( Int, Proposition )
+parseRanked =
     Parser.run rankedLogic >> Result.toMaybe

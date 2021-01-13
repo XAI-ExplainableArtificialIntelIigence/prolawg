@@ -9,10 +9,10 @@ import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes exposing (style)
 import List.Extra as List
-import Logic exposing (..)
-import LogicParser exposing (parse)
+import Logic.Argumentation exposing (..)
+import Logic.Core exposing (..)
+import Logic.Parser exposing (parseRanked)
 import Maybe.Extra as Maybe
-import Types exposing (..)
 
 
 main : Program () Model Msg
@@ -38,12 +38,16 @@ type Msg
     | LoadExample ( String, List String )
 
 
+
+-- MODEL
+
+
 init : Model
 init =
     { rulesInput = String.join "\n" initialRules
     , questionInput = initialQuestion
-    , rules = initialRules |> List.map parse |> Maybe.combine |> Maybe.map preferenceFromPriority
-    , question = Maybe.map Tuple.second (parse initialQuestion)
+    , rules = initialRules |> List.map parseRanked |> Maybe.combine |> Maybe.map parseExample
+    , question = Maybe.map Tuple.second (parseRanked initialQuestion)
     }
 
 
@@ -57,6 +61,44 @@ initialRules =
     , "2: c -> not x"
     , "not c"
     ]
+
+
+
+-- UPDATE
+
+
+update : Msg -> Model -> Model
+update msg model =
+    case msg of
+        NewRules s ->
+            { model
+                | rulesInput = s
+                , rules =
+                    s
+                        |> String.split "\n"
+                        |> List.filter (\a -> String.replace " " "" a /= "")
+                        |> List.map parseRanked
+                        |> Maybe.combine
+                        |> Maybe.map parseExample
+            }
+
+        NewQuestion s ->
+            { model
+                | questionInput = s
+                , question = Maybe.map Tuple.second (parseRanked s)
+            }
+
+        LoadExample ( question, rules ) ->
+            { model
+                | rulesInput = String.join "\n" rules ++ "\n"
+                , rules = rules |> List.map parseRanked |> Maybe.combine |> Maybe.map parseExample
+                , questionInput = question
+                , question = Maybe.map Tuple.second (parseRanked question)
+            }
+
+
+
+-- VIEW
 
 
 view : Model -> Html Msg
@@ -111,8 +153,8 @@ view model =
                         , column [ width fill, spacing 2 ]
                             (explanation preference question rules
                                 |> Maybe.map
-                                    (\{ relevant, irrelevant } ->
-                                        viewArguments relevant irrelevant 0 True
+                                    (\s ->
+                                        viewArguments s 0 True
                                             ++ [ explanationText ]
                                     )
                                 |> Maybe.withDefault [ text "Some information is missing." ]
@@ -127,15 +169,25 @@ view model =
 
 explanationText =
     column [ paddingXY 0 20, spacingXY 0 20 ]
-        [ paragraph [] [ text "Pro arguments are ", el [ Background.color (rgba 0 0 0 0.1), padding 5 ] (text "gray"), text ", contra arguments are ", el [ Font.color (rgb 1 1 1), Background.color (rgb 0 0 0), padding 5 ] (text "black"), text "." ]
-        , paragraph [] [ text "Possibly relevant arguments that are rebutted or defeated are ", el [ Font.strike ] (text "striked through"), text "." ]
-
-        -- text ". (Information on their defeaters could be displayed in principle, but that would blow the explanation scheme, since the defeaters also depend on pro and contra arguments, etc.)" ]
-        , paragraph [] [ text "There is some redundancy when arguments can be ordered in different ways." ]
+        [ paragraph []
+            [ text "Pro arguments are "
+            , el [ Background.color (rgba 0 0 0 0.1), padding 5 ] (text "gray")
+            , text ", contra arguments are "
+            , el [ Font.color (rgb 1 1 1), Background.color (rgb 0 0 0), padding 5 ] (text "black")
+            , text "."
+            ]
+        , paragraph []
+            [ text "Possibly relevant arguments that are rebutted or defeated are "
+            , el [ Font.strike ] (text "striked through")
+            , text "."
+            ]
+        , paragraph []
+            [ text "There is some redundancy when arguments can be ordered in different ways."
+            ]
         ]
 
 
-viewExplanation : Int -> Bool -> RelevantArgument -> Element msg
+viewExplanation : Int -> Bool -> RelevantArgument -> Element Msg
 viewExplanation depth isPro a =
     column
         [ width fill
@@ -143,15 +195,16 @@ viewExplanation depth isPro a =
         ]
         (case a of
             RelevantAssumption p ->
-                [ indented depth isPro True (text (string.fromProposition p)) ]
+                [ indented depth isPro True (text (propositionToString p)) ]
 
-            RelevantArgument p { relevant, irrelevant } ->
-                indented depth isPro True (text (string.fromProposition p))
-                    :: viewArguments relevant irrelevant (depth + 1) isPro
+            RelevantArgument p s ->
+                indented depth isPro True (text (propositionToString p))
+                    :: viewArguments s (depth + 1) isPro
         )
 
 
-viewArguments relevant irrelevant depth isPro =
+viewArguments : Support -> Int -> Bool -> List (Element Msg)
+viewArguments { relevant, irrelevant } depth isPro =
     (let
         { pro, contra } =
             relevant
@@ -163,8 +216,8 @@ viewArguments relevant irrelevant depth isPro =
                 { pro, contra } =
                     irrelevant
             in
-            List.map (\q -> indented depth isPro False (text (string.fromProposition q))) pro
-                ++ List.map (\q -> indented depth (not isPro) False (text (string.fromProposition q))) contra
+            List.map (\q -> indented depth isPro False (text (propositionToString q))) pro
+                ++ List.map (\q -> indented depth (not isPro) False (text (propositionToString q))) contra
            )
 
 
@@ -177,15 +230,15 @@ indented depth isPro isRelevant x =
         , column
             ([ width fill
              , Background.color
-                (rgba 0
-                    0
-                    0
-                    (if isPro then
-                        (toFloat depth + 1) * 0.05
+                (let
+                    a =
+                        if isPro then
+                            (toFloat depth + 1) * 0.05
 
-                     else
-                        1 - ((toFloat depth + 1) * 0.05)
-                    )
+                        else
+                            1 - ((toFloat depth + 1) * 0.05)
+                 in
+                 rgba 0 0 0 a
                 )
              , Font.color
                 (if isPro then
@@ -207,14 +260,6 @@ indented depth isPro isRelevant x =
         ]
 
 
-rank j =
-    if j == 0 then
-        ""
-
-    else
-        String.fromInt j ++ ": "
-
-
 marginLeft : Int -> Element.Attribute msg
 marginLeft x =
     htmlAttribute (style "margin-left" (String.fromInt x ++ "px"))
@@ -231,38 +276,12 @@ logicFont =
         ]
 
 
-update : Msg -> Model -> Model
-update msg model =
-    case msg of
-        NewRules s ->
-            { model
-                | rulesInput = s
-                , rules =
-                    s
-                        |> String.split "\n"
-                        |> List.filter (\a -> String.replace " " "" a /= "")
-                        |> List.map parse
-                        |> Maybe.combine
-                        |> Maybe.map preferenceFromPriority
-            }
 
-        NewQuestion s ->
-            { model
-                | questionInput = s
-                , question = Maybe.map Tuple.second (parse s)
-            }
-
-        LoadExample ( question, rules ) ->
-            { model
-                | rulesInput = String.join "\n" rules ++ "\n"
-                , rules = rules |> List.map parse |> Maybe.combine |> Maybe.map preferenceFromPriority
-                , questionInput = question
-                , question = Maybe.map Tuple.second (parse question)
-            }
+-- EXAMPLE DATA
 
 
-preferenceFromPriority : List ( Int, Proposition ) -> ( List Proposition, Preference )
-preferenceFromPriority l =
+parseExample : List ( Int, Proposition ) -> ( List Proposition, Preference )
+parseExample l =
     ( List.map Tuple.second l
     , \a b ->
         l
@@ -290,17 +309,3 @@ employment =
       , "Employed /\\ MilitaryOfficial -> ¬CanMakeRequestForChange"
       ]
     )
-
-
-
--- a and b -> x
--- a
--- b
--- c -> not x
--- (a and b) or c
---
--- a and b -> x
--- a
--- b
--- c -> not x
--- (a and b) or c
