@@ -1,5 +1,7 @@
 module Types exposing (..)
 
+import Html exposing (a)
+
 
 type Proposition
     = Variable String
@@ -23,13 +25,34 @@ type alias DNF =
     List (List Fact)
 
 
+type alias Preference =
+    Proposition -> Proposition -> Maybe Bool
+
+
 type Argument
-    = Assumption ( Int, Proposition )
+    = Assumption Proposition
     | Argument
-        ( Int, Proposition )
+        Proposition
         { pro : List Argument
         , contra : List Argument
         }
+
+
+type RelevantArgument
+    = RelevantAssumption Proposition
+    | RelevantArgument Proposition Support
+
+
+type alias Support =
+    { relevant :
+        { pro : List RelevantArgument
+        , contra : List RelevantArgument
+        }
+    , irrelevant :
+        { pro : List Proposition
+        , contra : List Proposition
+        }
+    }
 
 
 
@@ -49,10 +72,10 @@ string =
 fromArgument : Argument -> String
 fromArgument a =
     case a of
-        Assumption ( i, p ) ->
-            String.fromInt i ++ ": " ++ fromProposition p
+        Assumption p ->
+            fromProposition p
 
-        Argument ( i, p ) { pro, contra } ->
+        Argument p { pro, contra } ->
             "(pro: ["
                 ++ (pro
                         |> List.map fromArgument
@@ -66,8 +89,6 @@ fromArgument a =
                         |> String.join ", "
                    )
                 ++ "], "
-                ++ String.fromInt i
-                ++ ": "
                 ++ fromProposition p
                 ++ ")"
 
