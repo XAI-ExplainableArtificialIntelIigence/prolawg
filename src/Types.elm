@@ -17,17 +17,21 @@ type Fact
     | Negative String
 
 
+{-| Disjunctive normal form.
+-}
+type alias DNF =
+    List (List Fact)
+
+
 type Argument
     = Assumption Proposition
     | Argument Proposition (List Argument)
 
 
+
 -- type OpenArgument
 --     = OpenAssumption Proposition
 --     | OpenArgument Proposition (List (List (Maybe OpenArgument)))
-
-
-
 -- STRINGIFICATION
 
 
@@ -35,8 +39,6 @@ string =
     { fromArgument = fromArgument
     , fromFact = fromFact
     , fromProposition = fromProposition
-
-    --, fromSupport = fromSupport
     }
 
 
@@ -49,11 +51,6 @@ fromArgument a =
         Argument p l ->
             "(["
                 ++ (l
-                        -- |> List.map
-                        --     (List.map fromArgument
-                        --         >> List.sort
-                        --         >> String.join ", "
-                        --     )
                         |> List.map fromArgument
                         |> List.sort
                         |> String.join ", "
@@ -61,39 +58,6 @@ fromArgument a =
                 ++ "], "
                 ++ fromProposition p
                 ++ ")"
-
-
-
---     "(["
---         ++ (a.support
---                 |> List.map fromSupport
---                 -- |> List.map
---                 --     (List.map fromSupport
---                 --         >> List.sort
---                 --         >> String.join ", "
---                 --     )
---                 |> List.sort
---                 |> String.join ", "
---            )
---         ++ "], "
---         ++ fromFact a.conclusion
---         ++ ")"
--- fromTrackedFact : TrackedFact -> String
--- fromTrackedFact a =
---     (a.support
---         |> List.map fromSupport
---         |> List.sort
---         |> String.join ", "
---     )
---         ++ "; "
---         ++ fromFact a.conclusion
--- fromSupport : Support -> String
--- fromSupport s =
---     case s of
---         Assumption p ->
---             fromProposition p
---         Support a_ ->
---             fromArgument a_
 
 
 fromFact : Fact -> String
@@ -108,9 +72,23 @@ fromFact f =
 
 fromProposition : Proposition -> String
 fromProposition p =
+    fromProposition_ True p
+
+
+fromProposition_ : Bool -> Proposition -> String
+fromProposition_ outer p =
     let
+        ifInner a =
+            if outer then
+                ""
+
+            else
+                a
+
         join x a b =
-            "(" ++ String.join x (List.sort [ fromProposition a, fromProposition b ]) ++ ")"
+            ifInner "("
+                ++ String.join x (List.sort [ fromProposition a, fromProposition b ])
+                ++ ifInner ")"
     in
     case p of
         Variable a ->
@@ -123,7 +101,9 @@ fromProposition p =
             join " ∨ " a b
 
         Implies a b ->
-            "(" ++ String.join " -> " [ fromProposition a, fromProposition b ] ++ ")"
+            ifInner "("
+                ++ String.join " -> " [ fromProposition a, fromProposition b ]
+                ++ ifInner ")"
 
         Equiv a b ->
             join " <-> " a b

@@ -6,7 +6,7 @@ import Maybe.Extra as Maybe
 import Types exposing (..)
 
 
-decompose : Proposition -> List (List Fact)
+decompose : Proposition -> DNF
 decompose p =
     case p of
         Variable a ->
@@ -84,27 +84,27 @@ inconsistent =
         >> List.any (\( a, b ) -> contradicts a b)
 
 
-impossible : List (List Fact) -> Bool
+impossible : DNF -> Bool
 impossible =
     List.all inconsistent
 
 
-add : Fact -> List (List Fact) -> List (List Fact)
+add : Fact -> DNF -> DNF
 add a =
     List.map ((::) a)
 
 
-combine : List (List Fact) -> List (List Fact) -> List (List Fact)
+combine : DNF -> DNF -> DNF
 combine a b =
     List.cartesianProduct [ a, b ] |> List.map List.concat
 
 
-closes : List (List Fact) -> List (List Fact) -> Bool
+closes : DNF -> DNF -> Bool
 closes a l =
     impossible (combine a l) && not (impossible l)
 
 
-shrinks : List (List Fact) -> List (List Fact) -> Bool
+shrinks : DNF -> DNF -> Bool
 shrinks a b =
     List.length (List.filter inconsistent (combine a b))
         > List.length (List.filter inconsistent b)
@@ -116,12 +116,12 @@ consistent =
         >> List.all (\( a, b ) -> not (contradicts a b))
 
 
-cases : Proposition -> List (List Fact)
+cases : Proposition -> DNF
 cases p =
     List.filter consistent (decompose p)
 
 
-closures : Proposition -> List (List Fact)
+closures : Proposition -> DNF
 closures p =
     List.filter inconsistent (decompose p)
 
@@ -146,7 +146,7 @@ matters a l =
         (List.concat (decompose a))
 
 
-unknown : List Proposition -> List Proposition -> List (List Fact)
+unknown : List Proposition -> List Proposition -> DNF
 unknown question information =
     case
         List.find (\p -> matters p question) information
@@ -175,14 +175,14 @@ shortestLength l =
     List.minimum (List.map List.length l)
 
 
-paths : List (List Fact) -> List (List Fact)
+paths : DNF -> DNF
 paths branches =
     branches
         |> List.cartesianProduct
         |> List.map (List.uniqueBy string.fromFact)
 
 
-questions : List (List Fact) -> List String
+questions : DNF -> List String
 questions branches =
     shortestLength (paths branches)
         |> Maybe.map (\m -> List.filter (\facts -> List.length facts == m) (paths branches))
@@ -205,36 +205,20 @@ negateFact fact =
             Positive a
 
 
-negate : List (List Fact) -> List (List Fact)
+negate : DNF -> DNF
 negate l =
     l |> List.cartesianProduct |> List.map (List.map negateFact)
 
 
-factToProposition : Fact -> Proposition
-factToProposition f =
-    case f of
-        Positive a ->
-            Variable a
-
-        Negative a ->
-            Not (Variable a)
-
-
-powerset : List a -> List (List a)
-powerset =
-    List.foldr (\x acc -> acc ++ List.map ((::) x) acc) [ [] ]
-
-
+consistentCases : DNF -> DNF -> DNF
 consistentCases a b =
     List.filter (\c -> List.all consistent (combine [ c ] a)) b
 
 
-arguments : List (List Fact) -> List Proposition -> List Argument
+{-| Performs resolution.
+-}
+arguments : DNF -> List Proposition -> List Argument
 arguments question information =
-    let
-        _ =
-            Debug.log "question" question
-    in
     information
         |> List.map
             (\p ->
@@ -247,19 +231,18 @@ arguments question information =
 
                     restQuestion =
                         consistentCases cases_ negatedQuestion ++ consistentCases negatedQuestion cases_
-                in
-                if List.length restQuestion < (List.length cases_ * List.length negatedQuestion) then
-                    let
-                        _ =
-                            Debug.log "restQuestion" restQuestion
 
-                        _ =
-                            Debug.log "negate restQuestion" (negate restQuestion)
-                    in
-                    if List.length restQuestion == 0 then
+                    relevant =
+                        List.length restQuestion < (List.length cases_ * List.length negatedQuestion)
+
+                    decisive =
+                        restQuestion == []
+                in
+                case ( relevant, decisive ) of
+                    ( True, True ) ->
                         Just (Assumption p)
 
-                    else
+                    ( True, False ) ->
                         case arguments (negate restQuestion) (List.remove p information) of
                             a :: b ->
                                 Just (Argument p (a :: b))
@@ -267,16 +250,12 @@ arguments question information =
                             [] ->
                                 Nothing
 
-                else
-                    Nothing
+                    ( False, _ ) ->
+                        Nothing
             )
         |> Maybe.values
 
 
 explanation : Proposition -> List Proposition -> List Argument
 explanation question information =
-    let
-        _ =
-            Debug.log "?" question
-    in
     arguments (cases question) information

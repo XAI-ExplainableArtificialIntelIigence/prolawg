@@ -12235,7 +12235,6 @@ var $author$project$Logic$consistentCases = F2(
 			},
 			b);
 	});
-var $elm$core$Debug$log = _Debug_log;
 var $author$project$Logic$negateFact = function (fact) {
 	if (fact.$ === 'Positive') {
 		var a = fact.a;
@@ -12276,7 +12275,6 @@ var $elm_community$maybe_extra$Maybe$Extra$cons = F2(
 var $elm_community$maybe_extra$Maybe$Extra$values = A2($elm$core$List$foldr, $elm_community$maybe_extra$Maybe$Extra$cons, _List_Nil);
 var $author$project$Logic$arguments = F2(
 	function (question, information) {
-		var _v0 = A2($elm$core$Debug$log, 'question', question);
 		return $elm_community$maybe_extra$Maybe$Extra$values(
 			A2(
 				$elm$core$List$map,
@@ -12286,25 +12284,23 @@ var $author$project$Logic$arguments = F2(
 					var restQuestion = _Utils_ap(
 						A2($author$project$Logic$consistentCases, cases_, negatedQuestion),
 						A2($author$project$Logic$consistentCases, negatedQuestion, cases_));
-					if (_Utils_cmp(
+					var decisive = _Utils_eq(restQuestion, _List_Nil);
+					var relevant = _Utils_cmp(
 						$elm$core$List$length(restQuestion),
-						$elm$core$List$length(cases_) * $elm$core$List$length(negatedQuestion)) < 0) {
-						var _v1 = A2($elm$core$Debug$log, 'restQuestion', restQuestion);
-						var _v2 = A2(
-							$elm$core$Debug$log,
-							'negate restQuestion',
-							$author$project$Logic$negate(restQuestion));
-						if (!$elm$core$List$length(restQuestion)) {
+						$elm$core$List$length(cases_) * $elm$core$List$length(negatedQuestion)) < 0;
+					var _v0 = _Utils_Tuple2(relevant, decisive);
+					if (_v0.a) {
+						if (_v0.b) {
 							return $elm$core$Maybe$Just(
 								$author$project$Types$Assumption(p));
 						} else {
-							var _v3 = A2(
+							var _v1 = A2(
 								$author$project$Logic$arguments,
 								$author$project$Logic$negate(restQuestion),
 								A2($elm_community$list_extra$List$Extra$remove, p, information));
-							if (_v3.b) {
-								var a = _v3.a;
-								var b = _v3.b;
+							if (_v1.b) {
+								var a = _v1.a;
+								var b = _v1.b;
 								return $elm$core$Maybe$Just(
 									A2(
 										$author$project$Types$Argument,
@@ -12322,7 +12318,6 @@ var $author$project$Logic$arguments = F2(
 	});
 var $author$project$Logic$explanation = F2(
 	function (question, information) {
-		var _v0 = A2($elm$core$Debug$log, '?', question);
 		return A2(
 			$author$project$Logic$arguments,
 			$author$project$Logic$cases(question),
@@ -13742,54 +13737,69 @@ var $elm$core$List$sort = function (xs) {
 	return A2($elm$core$List$sortBy, $elm$core$Basics$identity, xs);
 };
 var $author$project$Types$fromProposition = function (p) {
-	var join = F3(
-		function (x, a, b) {
-			return '(' + (A2(
-				$elm$core$String$join,
-				x,
-				$elm$core$List$sort(
-					_List_fromArray(
-						[
-							$author$project$Types$fromProposition(a),
-							$author$project$Types$fromProposition(b)
-						]))) + ')');
-		});
-	switch (p.$) {
-		case 'Variable':
-			var a = p.a;
-			return a;
-		case 'And':
-			var a = p.a;
-			var b = p.b;
-			return A3(join, ' ∧ ', a, b);
-		case 'Or':
-			var a = p.a;
-			var b = p.b;
-			return A3(join, ' ∨ ', a, b);
-		case 'Implies':
-			var a = p.a;
-			var b = p.b;
-			return '(' + (A2(
-				$elm$core$String$join,
-				' -> ',
-				_List_fromArray(
-					[
-						$author$project$Types$fromProposition(a),
-						$author$project$Types$fromProposition(b)
-					])) + ')');
-		case 'Equiv':
-			var a = p.a;
-			var b = p.b;
-			return A3(join, ' <-> ', a, b);
-		case 'Not':
-			var a = p.a;
-			return '¬' + $author$project$Types$fromProposition(a);
-		case 'True_':
-			return 'True';
-		default:
-			return 'False';
-	}
+	return A2($author$project$Types$fromProposition_, true, p);
 };
+var $author$project$Types$fromProposition_ = F2(
+	function (outer, p) {
+		var ifInner = function (a) {
+			return outer ? '' : a;
+		};
+		var join = F3(
+			function (x, a, b) {
+				return _Utils_ap(
+					ifInner('('),
+					_Utils_ap(
+						A2(
+							$elm$core$String$join,
+							x,
+							$elm$core$List$sort(
+								_List_fromArray(
+									[
+										$author$project$Types$fromProposition(a),
+										$author$project$Types$fromProposition(b)
+									]))),
+						ifInner(')')));
+			});
+		switch (p.$) {
+			case 'Variable':
+				var a = p.a;
+				return a;
+			case 'And':
+				var a = p.a;
+				var b = p.b;
+				return A3(join, ' ∧ ', a, b);
+			case 'Or':
+				var a = p.a;
+				var b = p.b;
+				return A3(join, ' ∨ ', a, b);
+			case 'Implies':
+				var a = p.a;
+				var b = p.b;
+				return _Utils_ap(
+					ifInner('('),
+					_Utils_ap(
+						A2(
+							$elm$core$String$join,
+							' -> ',
+							_List_fromArray(
+								[
+									$author$project$Types$fromProposition(a),
+									$author$project$Types$fromProposition(b)
+								])),
+						ifInner(')')));
+			case 'Equiv':
+				var a = p.a;
+				var b = p.b;
+				return A3(join, ' <-> ', a, b);
+			case 'Not':
+				var a = p.a;
+				return '¬' + $author$project$Types$fromProposition(a);
+			case 'True_':
+				return 'True';
+			default:
+				return 'False';
+		}
+	});
 var $author$project$Types$fromArgument = function (a) {
 	if (a.$ === 'Assumption') {
 		var p = a.a;
