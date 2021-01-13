@@ -1,7 +1,7 @@
 module LogicParser exposing (..)
 
-import Parser exposing ((|.), (|=), Parser, float, keyword, symbol)
-import Pratt exposing (constant, infixLeft, infixRight, literal, postfix, prefix)
+import Parser exposing ((|.), (|=), Parser, int, keyword, oneOf, spaces, symbol)
+import Pratt exposing (constant, infixLeft, prefix)
 import Set
 import Types exposing (..)
 
@@ -12,9 +12,9 @@ logicExpression =
         { oneOf =
             [ variable, parenthesizedExpression ]
                 ++ List.map (\a -> constant (keyword a) False_)
-                    [ "true", "True", "TRUE", "1" ]
+                    [ "true", "True", "TRUE" ]
                 ++ List.map (\a -> constant (keyword a) False_)
-                    [ "false", "False", "FALSE", "0" ]
+                    [ "false", "False", "FALSE" ]
                 ++ List.map (\a -> prefix 5 (symbol a) Not)
                     [ "¬", "~", "!", "not", "Not", "NOT" ]
         , andThenOneOf =
@@ -27,7 +27,7 @@ logicExpression =
                 ++ List.map (\a -> infixLeft 2 (symbol a) (\p q -> Implies q p))
                     [ "←", "<-", ":-", "if", "If", "IF" ]
                 ++ List.map (\a -> infixLeft 1 (symbol a) (\p q -> And (Implies p q) (Implies q p)))
-                    [ "↔"]
+                    [ "↔" ]
         , spaces = Parser.spaces
         }
 
@@ -36,7 +36,7 @@ variable : Pratt.Config Proposition -> Parser Proposition
 variable _ =
     Parser.succeed Variable
         |= Parser.variable
-            { start = Char.isAlphaNum
+            { start = Char.isAlpha
             , inner = \c -> Char.isAlphaNum c || c == '_'
             , reserved = Set.fromList [ "not" ]
             }
@@ -58,8 +58,8 @@ logic =
         |. Parser.end
 
 
-parse : String -> Maybe Proposition
-parse text =
+parseProposition : String -> Maybe Proposition
+parseProposition text =
     let
         unambiguous =
             text
@@ -76,3 +76,36 @@ parse text =
 
         Err _ ->
             Nothing
+
+
+rankedLogic : Parser ( Int, Proposition )
+rankedLogic =
+    Parser.oneOf
+        [ Parser.succeed (\a -> ( 0, a ))
+            |= logicExpression
+            |. Parser.end
+        , Parser.succeed (\a b -> ( a, b ))
+            |= int
+            |. oneOf
+                [ symbol ":"
+                , spaces
+                ]
+            |. spaces
+            |= logicExpression
+            |. Parser.end
+        , Parser.succeed (\a b -> ( -a, b ))
+            |. symbol "-"
+            |= int
+            |. oneOf
+                [ symbol ":"
+                , spaces
+                ]
+            |. spaces
+            |= logicExpression
+            |. Parser.end
+        ]
+
+
+parse : String -> Maybe ( Int, Proposition )
+parse =
+    Parser.run rankedLogic >> Result.toMaybe

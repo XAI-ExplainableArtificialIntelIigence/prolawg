@@ -4632,20 +4632,28 @@ var $author$project$Types$Variable = function (a) {
 };
 var $author$project$Main$init = {
 	question: $elm$core$Maybe$Just(
-		$author$project$Types$Variable('c')),
+		_Utils_Tuple2(
+			0,
+			$author$project$Types$Variable('c'))),
 	questionInput: 'c',
 	rules: $elm$core$Maybe$Just(
 		_List_fromArray(
 			[
+				_Utils_Tuple2(
+				0,
 				A2(
-				$author$project$Types$Implies,
-				A2(
-					$author$project$Types$And,
-					$author$project$Types$Variable('a'),
-					$author$project$Types$Variable('b')),
-				$author$project$Types$Variable('c')),
-				$author$project$Types$Variable('a'),
-				$author$project$Types$Variable('b')
+					$author$project$Types$Implies,
+					A2(
+						$author$project$Types$And,
+						$author$project$Types$Variable('a'),
+						$author$project$Types$Variable('b')),
+					$author$project$Types$Variable('c'))),
+				_Utils_Tuple2(
+				0,
+				$author$project$Types$Variable('a')),
+				_Utils_Tuple2(
+				0,
+				$author$project$Types$Variable('b'))
 			])),
 	rulesInput: 'a /\\ b -> c\na\nb\n'
 };
@@ -5407,6 +5415,11 @@ var $elm$core$List$filter = F2(
 			list);
 	});
 var $elm$core$Basics$neq = _Utils_notEqual;
+var $elm$core$Basics$composeR = F3(
+	function (f, g, x) {
+		return g(
+			f(x));
+	});
 var $elm$parser$Parser$ExpectingEnd = {$: 'ExpectingEnd'};
 var $elm$parser$Parser$Advanced$Bad = F2(
 	function (a, b) {
@@ -5489,6 +5502,171 @@ var $elm$parser$Parser$Advanced$ignorer = F2(
 		return A3($elm$parser$Parser$Advanced$map2, $elm$core$Basics$always, keepParser, ignoreParser);
 	});
 var $elm$parser$Parser$ignorer = $elm$parser$Parser$Advanced$ignorer;
+var $elm$parser$Parser$ExpectingInt = {$: 'ExpectingInt'};
+var $elm$parser$Parser$Advanced$consumeBase = _Parser_consumeBase;
+var $elm$parser$Parser$Advanced$consumeBase16 = _Parser_consumeBase16;
+var $elm$parser$Parser$Advanced$bumpOffset = F2(
+	function (newOffset, s) {
+		return {col: s.col + (newOffset - s.offset), context: s.context, indent: s.indent, offset: newOffset, row: s.row, src: s.src};
+	});
+var $elm$parser$Parser$Advanced$chompBase10 = _Parser_chompBase10;
+var $elm$parser$Parser$Advanced$isAsciiCode = _Parser_isAsciiCode;
+var $elm$core$Basics$negate = function (n) {
+	return -n;
+};
+var $elm$parser$Parser$Advanced$consumeExp = F2(
+	function (offset, src) {
+		if (A3($elm$parser$Parser$Advanced$isAsciiCode, 101, offset, src) || A3($elm$parser$Parser$Advanced$isAsciiCode, 69, offset, src)) {
+			var eOffset = offset + 1;
+			var expOffset = (A3($elm$parser$Parser$Advanced$isAsciiCode, 43, eOffset, src) || A3($elm$parser$Parser$Advanced$isAsciiCode, 45, eOffset, src)) ? (eOffset + 1) : eOffset;
+			var newOffset = A2($elm$parser$Parser$Advanced$chompBase10, expOffset, src);
+			return _Utils_eq(expOffset, newOffset) ? (-newOffset) : newOffset;
+		} else {
+			return offset;
+		}
+	});
+var $elm$parser$Parser$Advanced$consumeDotAndExp = F2(
+	function (offset, src) {
+		return A3($elm$parser$Parser$Advanced$isAsciiCode, 46, offset, src) ? A2(
+			$elm$parser$Parser$Advanced$consumeExp,
+			A2($elm$parser$Parser$Advanced$chompBase10, offset + 1, src),
+			src) : A2($elm$parser$Parser$Advanced$consumeExp, offset, src);
+	});
+var $elm$parser$Parser$Advanced$finalizeInt = F5(
+	function (invalid, handler, startOffset, _v0, s) {
+		var endOffset = _v0.a;
+		var n = _v0.b;
+		if (handler.$ === 'Err') {
+			var x = handler.a;
+			return A2(
+				$elm$parser$Parser$Advanced$Bad,
+				true,
+				A2($elm$parser$Parser$Advanced$fromState, s, x));
+		} else {
+			var toValue = handler.a;
+			return _Utils_eq(startOffset, endOffset) ? A2(
+				$elm$parser$Parser$Advanced$Bad,
+				_Utils_cmp(s.offset, startOffset) < 0,
+				A2($elm$parser$Parser$Advanced$fromState, s, invalid)) : A3(
+				$elm$parser$Parser$Advanced$Good,
+				true,
+				toValue(n),
+				A2($elm$parser$Parser$Advanced$bumpOffset, endOffset, s));
+		}
+	});
+var $elm$parser$Parser$Advanced$fromInfo = F4(
+	function (row, col, x, context) {
+		return A2(
+			$elm$parser$Parser$Advanced$AddRight,
+			$elm$parser$Parser$Advanced$Empty,
+			A4($elm$parser$Parser$Advanced$DeadEnd, row, col, x, context));
+	});
+var $elm$core$String$toFloat = _String_toFloat;
+var $elm$parser$Parser$Advanced$finalizeFloat = F6(
+	function (invalid, expecting, intSettings, floatSettings, intPair, s) {
+		var intOffset = intPair.a;
+		var floatOffset = A2($elm$parser$Parser$Advanced$consumeDotAndExp, intOffset, s.src);
+		if (floatOffset < 0) {
+			return A2(
+				$elm$parser$Parser$Advanced$Bad,
+				true,
+				A4($elm$parser$Parser$Advanced$fromInfo, s.row, s.col - (floatOffset + s.offset), invalid, s.context));
+		} else {
+			if (_Utils_eq(s.offset, floatOffset)) {
+				return A2(
+					$elm$parser$Parser$Advanced$Bad,
+					false,
+					A2($elm$parser$Parser$Advanced$fromState, s, expecting));
+			} else {
+				if (_Utils_eq(intOffset, floatOffset)) {
+					return A5($elm$parser$Parser$Advanced$finalizeInt, invalid, intSettings, s.offset, intPair, s);
+				} else {
+					if (floatSettings.$ === 'Err') {
+						var x = floatSettings.a;
+						return A2(
+							$elm$parser$Parser$Advanced$Bad,
+							true,
+							A2($elm$parser$Parser$Advanced$fromState, s, invalid));
+					} else {
+						var toValue = floatSettings.a;
+						var _v1 = $elm$core$String$toFloat(
+							A3($elm$core$String$slice, s.offset, floatOffset, s.src));
+						if (_v1.$ === 'Nothing') {
+							return A2(
+								$elm$parser$Parser$Advanced$Bad,
+								true,
+								A2($elm$parser$Parser$Advanced$fromState, s, invalid));
+						} else {
+							var n = _v1.a;
+							return A3(
+								$elm$parser$Parser$Advanced$Good,
+								true,
+								toValue(n),
+								A2($elm$parser$Parser$Advanced$bumpOffset, floatOffset, s));
+						}
+					}
+				}
+			}
+		}
+	});
+var $elm$parser$Parser$Advanced$number = function (c) {
+	return $elm$parser$Parser$Advanced$Parser(
+		function (s) {
+			if (A3($elm$parser$Parser$Advanced$isAsciiCode, 48, s.offset, s.src)) {
+				var zeroOffset = s.offset + 1;
+				var baseOffset = zeroOffset + 1;
+				return A3($elm$parser$Parser$Advanced$isAsciiCode, 120, zeroOffset, s.src) ? A5(
+					$elm$parser$Parser$Advanced$finalizeInt,
+					c.invalid,
+					c.hex,
+					baseOffset,
+					A2($elm$parser$Parser$Advanced$consumeBase16, baseOffset, s.src),
+					s) : (A3($elm$parser$Parser$Advanced$isAsciiCode, 111, zeroOffset, s.src) ? A5(
+					$elm$parser$Parser$Advanced$finalizeInt,
+					c.invalid,
+					c.octal,
+					baseOffset,
+					A3($elm$parser$Parser$Advanced$consumeBase, 8, baseOffset, s.src),
+					s) : (A3($elm$parser$Parser$Advanced$isAsciiCode, 98, zeroOffset, s.src) ? A5(
+					$elm$parser$Parser$Advanced$finalizeInt,
+					c.invalid,
+					c.binary,
+					baseOffset,
+					A3($elm$parser$Parser$Advanced$consumeBase, 2, baseOffset, s.src),
+					s) : A6(
+					$elm$parser$Parser$Advanced$finalizeFloat,
+					c.invalid,
+					c.expecting,
+					c._int,
+					c._float,
+					_Utils_Tuple2(zeroOffset, 0),
+					s)));
+			} else {
+				return A6(
+					$elm$parser$Parser$Advanced$finalizeFloat,
+					c.invalid,
+					c.expecting,
+					c._int,
+					c._float,
+					A3($elm$parser$Parser$Advanced$consumeBase, 10, s.offset, s.src),
+					s);
+			}
+		});
+};
+var $elm$parser$Parser$Advanced$int = F2(
+	function (expecting, invalid) {
+		return $elm$parser$Parser$Advanced$number(
+			{
+				binary: $elm$core$Result$Err(invalid),
+				expecting: expecting,
+				_float: $elm$core$Result$Err(invalid),
+				hex: $elm$core$Result$Err(invalid),
+				_int: $elm$core$Result$Ok($elm$core$Basics$identity),
+				invalid: invalid,
+				octal: $elm$core$Result$Err(invalid)
+			});
+	});
+var $elm$parser$Parser$int = A2($elm$parser$Parser$Advanced$int, $elm$parser$Parser$ExpectingInt, $elm$parser$Parser$ExpectingInt);
 var $elm$parser$Parser$Advanced$keeper = F2(
 	function (parseFunc, parseArg) {
 		return A3($elm$parser$Parser$Advanced$map2, $elm$core$Basics$apL, parseFunc, parseArg);
@@ -5797,9 +5975,6 @@ var $elm$parser$Parser$Advanced$Token = F2(
 	});
 var $elm$parser$Parser$Advanced$isSubChar = _Parser_isSubChar;
 var $elm$parser$Parser$Advanced$isSubString = _Parser_isSubString;
-var $elm$core$Basics$negate = function (n) {
-	return -n;
-};
 var $elm$core$Basics$not = _Basics_not;
 var $elm$parser$Parser$Advanced$keyword = function (_v0) {
 	var kwd = _v0.a;
@@ -6200,7 +6375,7 @@ var $author$project$LogicParser$variable = function (_v0) {
 				reserved: $elm$core$Set$fromList(
 					_List_fromArray(
 						['not'])),
-				start: $elm$core$Char$isAlphaNum
+				start: $elm$core$Char$isAlpha
 			}));
 };
 var $author$project$LogicParser$logicExpression = $dmy$elm_pratt_parser$Pratt$expression(
@@ -6286,7 +6461,7 @@ var $author$project$LogicParser$logicExpression = $dmy$elm_pratt_parser$Pratt$ex
 							$author$project$Types$False_);
 					},
 					_List_fromArray(
-						['true', 'True', 'TRUE', '1'])),
+						['true', 'True', 'TRUE'])),
 				_Utils_ap(
 					A2(
 						$elm$core$List$map,
@@ -6297,7 +6472,7 @@ var $author$project$LogicParser$logicExpression = $dmy$elm_pratt_parser$Pratt$ex
 								$author$project$Types$False_);
 						},
 						_List_fromArray(
-							['false', 'False', 'FALSE', '0'])),
+							['false', 'False', 'FALSE'])),
 					A2(
 						$elm$core$List$map,
 						function (a) {
@@ -6311,17 +6486,65 @@ var $author$project$LogicParser$logicExpression = $dmy$elm_pratt_parser$Pratt$ex
 							['¬', '~', '!', 'not', 'Not', 'NOT']))))),
 		spaces: $elm$parser$Parser$spaces
 	});
-var $author$project$LogicParser$logic = A2(
-	$elm$parser$Parser$keeper,
-	$elm$parser$Parser$succeed($elm$core$Basics$identity),
-	A2($elm$parser$Parser$ignorer, $author$project$LogicParser$logicExpression, $elm$parser$Parser$end));
-var $elm$core$String$replace = F3(
-	function (before, after, string) {
-		return A2(
-			$elm$core$String$join,
-			after,
-			A2($elm$core$String$split, before, string));
-	});
+var $elm$parser$Parser$oneOf = $elm$parser$Parser$Advanced$oneOf;
+var $author$project$LogicParser$rankedLogic = $elm$parser$Parser$oneOf(
+	_List_fromArray(
+		[
+			A2(
+			$elm$parser$Parser$keeper,
+			$elm$parser$Parser$succeed(
+				function (a) {
+					return _Utils_Tuple2(0, a);
+				}),
+			A2($elm$parser$Parser$ignorer, $author$project$LogicParser$logicExpression, $elm$parser$Parser$end)),
+			A2(
+			$elm$parser$Parser$keeper,
+			A2(
+				$elm$parser$Parser$keeper,
+				$elm$parser$Parser$succeed(
+					F2(
+						function (a, b) {
+							return _Utils_Tuple2(a, b);
+						})),
+				A2(
+					$elm$parser$Parser$ignorer,
+					A2(
+						$elm$parser$Parser$ignorer,
+						$elm$parser$Parser$int,
+						$elm$parser$Parser$oneOf(
+							_List_fromArray(
+								[
+									$elm$parser$Parser$symbol(':'),
+									$elm$parser$Parser$spaces
+								]))),
+					$elm$parser$Parser$spaces)),
+			A2($elm$parser$Parser$ignorer, $author$project$LogicParser$logicExpression, $elm$parser$Parser$end)),
+			A2(
+			$elm$parser$Parser$keeper,
+			A2(
+				$elm$parser$Parser$keeper,
+				A2(
+					$elm$parser$Parser$ignorer,
+					$elm$parser$Parser$succeed(
+						F2(
+							function (a, b) {
+								return _Utils_Tuple2(-a, b);
+							})),
+					$elm$parser$Parser$symbol('-')),
+				A2(
+					$elm$parser$Parser$ignorer,
+					A2(
+						$elm$parser$Parser$ignorer,
+						$elm$parser$Parser$int,
+						$elm$parser$Parser$oneOf(
+							_List_fromArray(
+								[
+									$elm$parser$Parser$symbol(':'),
+									$elm$parser$Parser$spaces
+								]))),
+					$elm$parser$Parser$spaces)),
+			A2($elm$parser$Parser$ignorer, $author$project$LogicParser$logicExpression, $elm$parser$Parser$end))
+		]));
 var $elm$parser$Parser$DeadEnd = F3(
 	function (row, col, problem) {
 		return {col: col, problem: problem, row: row};
@@ -6381,32 +6604,25 @@ var $elm$parser$Parser$run = F2(
 				A2($elm$core$List$map, $elm$parser$Parser$problemToDeadEnd, problems));
 		}
 	});
-var $author$project$LogicParser$parse = function (text) {
-	var unambiguous = A3(
-		$elm$core$String$replace,
-		'IFF',
-		'↔',
-		A3(
-			$elm$core$String$replace,
-			'Iff',
-			'↔',
-			A3(
-				$elm$core$String$replace,
-				'iff',
-				'↔',
-				A3(
-					$elm$core$String$replace,
-					':-:',
-					'↔',
-					A3($elm$core$String$replace, '<->', '↔', text)))));
-	var _v0 = A2($elm$parser$Parser$run, $author$project$LogicParser$logic, unambiguous);
-	if (_v0.$ === 'Ok') {
-		var a = _v0.a;
-		return $elm$core$Maybe$Just(a);
+var $elm$core$Result$toMaybe = function (result) {
+	if (result.$ === 'Ok') {
+		var v = result.a;
+		return $elm$core$Maybe$Just(v);
 	} else {
 		return $elm$core$Maybe$Nothing;
 	}
 };
+var $author$project$LogicParser$parse = A2(
+	$elm$core$Basics$composeR,
+	$elm$parser$Parser$run($author$project$LogicParser$rankedLogic),
+	$elm$core$Result$toMaybe);
+var $elm$core$String$replace = F3(
+	function (before, after, string) {
+		return A2(
+			$elm$core$String$join,
+			after,
+			A2($elm$core$String$split, before, string));
+	});
 var $author$project$Main$update = F2(
 	function (msg, model) {
 		switch (msg.$) {
@@ -11937,10 +12153,6 @@ var $mdgriffith$elm_ui$Element$column = F2(
 						attrs))),
 			$mdgriffith$elm_ui$Internal$Model$Unkeyed(children));
 	});
-var $author$project$Main$disj = _Utils_Tuple2(
-	'c',
-	_List_fromArray(
-		['a or b -> c', 'a or b']));
 var $mdgriffith$elm_ui$Element$el = F2(
 	function (attrs, child) {
 		return A4(
@@ -11962,13 +12174,6 @@ var $author$project$Main$employment = _Utils_Tuple2(
 	'CanMakeRequestForChange',
 	_List_fromArray(
 		['Employed', '¬LessThanTenEmployees', '¬ReachedOldAgeInsurance', 'MilitaryOfficial', 'WorkedForAtLeastTwentySixWeeks', 'Employed -> CanMakeRequestForChange', 'Employed /\\ LessThanTenEmployees -> ¬CanMakeRequestForChange', 'Employed /\\ ReachedOldAgeInsurance -> ¬CanMakeRequestForChange', 'Employed /\\ MilitaryOfficial -> ¬CanMakeRequestForChange']));
-var $author$project$Types$Argument = F2(
-	function (a, b) {
-		return {$: 'Argument', a: a, b: b};
-	});
-var $author$project$Types$Assumption = function (a) {
-	return {$: 'Assumption', a: a};
-};
 var $elm$core$Basics$composeL = F3(
 	function (g, f, x) {
 		return g(
@@ -11980,11 +12185,6 @@ var $elm$core$List$all = F2(
 			$elm$core$List$any,
 			A2($elm$core$Basics$composeL, $elm$core$Basics$not, isOkay),
 			list);
-	});
-var $elm$core$Basics$composeR = F3(
-	function (f, g, x) {
-		return g(
-			f(x));
 	});
 var $author$project$Logic$contradicts = F2(
 	function (a, b) {
@@ -12210,6 +12410,13 @@ var $author$project$Logic$cases = function (p) {
 		$author$project$Logic$consistent,
 		$author$project$Logic$decompose(p));
 };
+var $author$project$Types$Argument = F2(
+	function (a, b) {
+		return {$: 'Argument', a: a, b: b};
+	});
+var $author$project$Types$Assumption = function (a) {
+	return {$: 'Assumption', a: a};
+};
 var $author$project$Logic$combine = F2(
 	function (a, b) {
 		return A2(
@@ -12278,7 +12485,9 @@ var $author$project$Logic$arguments = F2(
 		return $elm_community$maybe_extra$Maybe$Extra$values(
 			A2(
 				$elm$core$List$map,
-				function (p) {
+				function (_v1) {
+					var i = _v1.a;
+					var p = _v1.b;
 					var negatedQuestion = $author$project$Logic$negate(question);
 					var cases_ = $author$project$Logic$cases(p);
 					var restQuestion = _Utils_ap(
@@ -12288,27 +12497,28 @@ var $author$project$Logic$arguments = F2(
 					var relevant = _Utils_cmp(
 						$elm$core$List$length(restQuestion),
 						$elm$core$List$length(cases_) * $elm$core$List$length(negatedQuestion)) < 0;
-					var _v0 = _Utils_Tuple2(relevant, decisive);
-					if (_v0.a) {
-						if (_v0.b) {
+					var _v2 = _Utils_Tuple2(relevant, decisive);
+					if (_v2.a) {
+						if (_v2.b) {
 							return $elm$core$Maybe$Just(
-								$author$project$Types$Assumption(p));
+								$author$project$Types$Assumption(
+									_Utils_Tuple2(i, p)));
 						} else {
-							var _v1 = A2(
-								$author$project$Logic$arguments,
-								$author$project$Logic$negate(restQuestion),
-								A2($elm_community$list_extra$List$Extra$remove, p, information));
-							if (_v1.b) {
-								var a = _v1.a;
-								var b = _v1.b;
-								return $elm$core$Maybe$Just(
-									A2(
+							return A2(
+								$elm$core$Maybe$map,
+								function (l) {
+									return A2(
 										$author$project$Types$Argument,
-										p,
-										A2($elm$core$List$cons, a, b)));
-							} else {
-								return $elm$core$Maybe$Nothing;
-							}
+										_Utils_Tuple2(i, p),
+										l);
+								},
+								A2(
+									$author$project$Logic$procon,
+									$author$project$Logic$negate(restQuestion),
+									A2(
+										$elm_community$list_extra$List$Extra$remove,
+										_Utils_Tuple2(i, p),
+										information)));
 						}
 					} else {
 						return $elm$core$Maybe$Nothing;
@@ -12316,10 +12526,25 @@ var $author$project$Logic$arguments = F2(
 				},
 				information));
 	});
+var $author$project$Logic$procon = F2(
+	function (question, information) {
+		var pro = A2($author$project$Logic$arguments, question, information);
+		var contra = A2(
+			$author$project$Logic$arguments,
+			$author$project$Logic$negate(question),
+			information);
+		var _v0 = _Utils_Tuple2(pro, contra);
+		if ((!_v0.a.b) && (!_v0.b.b)) {
+			return $elm$core$Maybe$Nothing;
+		} else {
+			return $elm$core$Maybe$Just(
+				{contra: contra, pro: pro});
+		}
+	});
 var $author$project$Logic$explanation = F2(
 	function (question, information) {
 		return A2(
-			$author$project$Logic$arguments,
+			$author$project$Logic$procon,
 			$author$project$Logic$cases(question),
 			information);
 	});
@@ -13802,16 +14027,25 @@ var $author$project$Types$fromProposition_ = F2(
 	});
 var $author$project$Types$fromArgument = function (a) {
 	if (a.$ === 'Assumption') {
-		var p = a.a;
-		return $author$project$Types$fromProposition(p);
+		var _v1 = a.a;
+		var i = _v1.a;
+		var p = _v1.b;
+		return $elm$core$String$fromInt(i) + (': ' + $author$project$Types$fromProposition(p));
 	} else {
-		var p = a.a;
-		var l = a.b;
-		return '([' + (A2(
+		var _v2 = a.a;
+		var i = _v2.a;
+		var p = _v2.b;
+		var pro = a.b.pro;
+		var contra = a.b.contra;
+		return '(pro: [' + (A2(
 			$elm$core$String$join,
 			', ',
 			$elm$core$List$sort(
-				A2($elm$core$List$map, $author$project$Types$fromArgument, l))) + ('], ' + ($author$project$Types$fromProposition(p) + ')')));
+				A2($elm$core$List$map, $author$project$Types$fromArgument, pro))) + ('], contra: [' + (A2(
+			$elm$core$String$join,
+			', ',
+			$elm$core$List$sort(
+				A2($elm$core$List$map, $author$project$Types$fromArgument, contra))) + ('], ' + ($elm$core$String$fromInt(i) + (': ' + ($author$project$Types$fromProposition(p) + ')')))))));
 	}
 };
 var $author$project$Types$fromFact = function (f) {
@@ -13824,8 +14058,11 @@ var $author$project$Types$fromFact = function (f) {
 	}
 };
 var $author$project$Types$string = {fromArgument: $author$project$Types$fromArgument, fromFact: $author$project$Types$fromFact, fromProposition: $author$project$Types$fromProposition};
-var $author$project$Main$viewExplanation = F2(
-	function (depth, a) {
+var $author$project$Main$viewExplanation = F3(
+	function (depth, isPro, a) {
+		var rank = function (j) {
+			return (!j) ? '' : ($elm$core$String$fromInt(j) + ': ');
+		};
 		var indented = F2(
 			function (depth_, x) {
 				return A2(
@@ -13850,7 +14087,14 @@ var $author$project$Main$viewExplanation = F2(
 								[
 									$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill),
 									$mdgriffith$elm_ui$Element$Background$color(
-									A4($mdgriffith$elm_ui$Element$rgba, 0, 0, 0, (depth_ + 1) * 0.1)),
+									A4(
+										$mdgriffith$elm_ui$Element$rgba,
+										0,
+										0,
+										0,
+										isPro ? ((depth_ + 1) * 0.05) : (1 - ((depth + 1) * 0.05)))),
+									$mdgriffith$elm_ui$Element$Font$color(
+									isPro ? A3($mdgriffith$elm_ui$Element$rgb, 0, 0, 0) : A3($mdgriffith$elm_ui$Element$rgb, 1, 1, 1)),
 									$mdgriffith$elm_ui$Element$padding(5)
 								]),
 							_List_fromArray(
@@ -13866,29 +14110,43 @@ var $author$project$Main$viewExplanation = F2(
 				]),
 			function () {
 				if (a.$ === 'Assumption') {
-					var p = a.a;
+					var _v1 = a.a;
+					var i = _v1.a;
+					var p = _v1.b;
 					return _List_fromArray(
 						[
 							A2(
 							indented,
 							depth,
 							$mdgriffith$elm_ui$Element$text(
-								$author$project$Types$string.fromProposition(p)))
+								_Utils_ap(
+									rank(i),
+									$author$project$Types$string.fromProposition(p))))
 						]);
 				} else {
-					var p = a.a;
-					var l = a.b;
+					var _v2 = a.a;
+					var i = _v2.a;
+					var p = _v2.b;
+					var pro = a.b.pro;
+					var contra = a.b.contra;
 					return A2(
 						$elm$core$List$cons,
 						A2(
 							indented,
 							depth,
 							$mdgriffith$elm_ui$Element$text(
-								$author$project$Types$string.fromProposition(p))),
-						A2(
-							$elm$core$List$map,
-							$author$project$Main$viewExplanation(depth + 1),
-							l));
+								_Utils_ap(
+									rank(i),
+									$author$project$Types$string.fromProposition(p)))),
+						_Utils_ap(
+							A2(
+								$elm$core$List$map,
+								A2($author$project$Main$viewExplanation, depth + 1, isPro),
+								pro),
+							A2(
+								$elm$core$List$map,
+								A2($author$project$Main$viewExplanation, depth + 1, !isPro),
+								contra)));
 				}
 			}());
 	});
@@ -13945,17 +14203,6 @@ var $author$project$Main$view = function (model) {
 						]),
 					$mdgriffith$elm_ui$Element$text('Load employment law example.')),
 					A2(
-					$mdgriffith$elm_ui$Element$el,
-					_List_fromArray(
-						[
-							$mdgriffith$elm_ui$Element$Font$color(
-							A3($mdgriffith$elm_ui$Element$rgb, 0, 0, 1)),
-							$mdgriffith$elm_ui$Element$Events$onClick(
-							$author$project$Main$LoadExample($author$project$Main$disj)),
-							$mdgriffith$elm_ui$Element$pointer
-						]),
-					$mdgriffith$elm_ui$Element$text('Load disjunction example.')),
-					A2(
 					$mdgriffith$elm_ui$Element$Input$text,
 					_List_fromArray(
 						[$author$project$Main$logicFont]),
@@ -13980,7 +14227,8 @@ var $author$project$Main$view = function (model) {
 					var _v2 = _Utils_Tuple2(model.rules, model.question);
 					if ((_v2.a.$ === 'Just') && (_v2.b.$ === 'Just')) {
 						var rules = _v2.a.a;
-						var question = _v2.b.a;
+						var _v3 = _v2.b.a;
+						var question = _v3.b;
 						return A2(
 							$mdgriffith$elm_ui$Element$column,
 							_List_fromArray(
@@ -14004,9 +14252,27 @@ var $author$project$Main$view = function (model) {
 											$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill)
 										]),
 									A2(
-										$elm$core$List$map,
-										$author$project$Main$viewExplanation(0),
-										A2($author$project$Logic$explanation, question, rules)))
+										$elm$core$Maybe$withDefault,
+										_List_fromArray(
+											[
+												$mdgriffith$elm_ui$Element$text('Some information is missing.')
+											]),
+										A2(
+											$elm$core$Maybe$map,
+											function (_v4) {
+												var pro = _v4.pro;
+												var contra = _v4.contra;
+												return _Utils_ap(
+													A2(
+														$elm$core$List$map,
+														A2($author$project$Main$viewExplanation, 0, true),
+														pro),
+													A2(
+														$elm$core$List$map,
+														A2($author$project$Main$viewExplanation, 0, false),
+														contra));
+											},
+											A2($author$project$Logic$explanation, question, rules))))
 								]));
 					} else {
 						return $mdgriffith$elm_ui$Element$none;

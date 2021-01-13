@@ -65,6 +65,16 @@ decompose p =
             decompose True_
 
 
+opposite : Proposition -> Proposition
+opposite p =
+    case p of
+        Not q ->
+            q
+
+        _ ->
+            Not p
+
+
 contradicts : Fact -> Fact -> Bool
 contradicts a b =
     case ( a, b ) of
@@ -217,11 +227,11 @@ consistentCases a b =
 
 {-| Performs resolution.
 -}
-arguments : DNF -> List Proposition -> List Argument
+arguments : DNF -> List ( Int, Proposition ) -> List Argument
 arguments question information =
     information
         |> List.map
-            (\p ->
+            (\( i, p ) ->
                 let
                     cases_ =
                         cases p
@@ -240,15 +250,11 @@ arguments question information =
                 in
                 case ( relevant, decisive ) of
                     ( True, True ) ->
-                        Just (Assumption p)
+                        Just (Assumption ( i, p ))
 
                     ( True, False ) ->
-                        case arguments (negate restQuestion) (List.remove p information) of
-                            a :: b ->
-                                Just (Argument p (a :: b))
-
-                            [] ->
-                                Nothing
+                        procon (negate restQuestion) (List.remove ( i, p ) information)
+                            |> Maybe.map (\l -> Argument ( i, p ) l)
 
                     ( False, _ ) ->
                         Nothing
@@ -256,6 +262,26 @@ arguments question information =
         |> Maybe.values
 
 
-explanation : Proposition -> List Proposition -> List Argument
+procon : DNF -> List ( Int, Proposition ) -> Maybe { pro : List Argument, contra : List Argument }
+procon question information =
+    let
+        pro =
+            arguments question information
+
+        contra =
+            arguments (negate question) information
+    in
+    case ( pro, contra ) of
+        ( [], [] ) ->
+            Nothing
+
+        _ ->
+            Just
+                { pro = pro
+                , contra = contra
+                }
+
+
+explanation : Proposition -> List ( Int, Proposition ) -> Maybe { pro : List Argument, contra : List Argument }
 explanation question information =
-    arguments (cases question) information
+    procon (cases question) information

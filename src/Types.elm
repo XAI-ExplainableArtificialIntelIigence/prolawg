@@ -24,8 +24,12 @@ type alias DNF =
 
 
 type Argument
-    = Assumption Proposition
-    | Argument Proposition (List Argument)
+    = Assumption ( Int, Proposition )
+    | Argument
+        ( Int, Proposition )
+        { pro : List Argument
+        , contra : List Argument
+        }
 
 
 
@@ -45,17 +49,25 @@ string =
 fromArgument : Argument -> String
 fromArgument a =
     case a of
-        Assumption p ->
-            fromProposition p
+        Assumption ( i, p ) ->
+            String.fromInt i ++ ": " ++ fromProposition p
 
-        Argument p l ->
-            "(["
-                ++ (l
+        Argument ( i, p ) { pro, contra } ->
+            "(pro: ["
+                ++ (pro
+                        |> List.map fromArgument
+                        |> List.sort
+                        |> String.join ", "
+                   )
+                ++ "], contra: ["
+                ++ (contra
                         |> List.map fromArgument
                         |> List.sort
                         |> String.join ", "
                    )
                 ++ "], "
+                ++ String.fromInt i
+                ++ ": "
                 ++ fromProposition p
                 ++ ")"
 

@@ -9,7 +9,7 @@ import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes exposing (style)
 import Logic exposing (..)
-import LogicParser exposing (logic, parse)
+import LogicParser exposing (parse)
 import Maybe.Extra as Maybe
 import Types exposing (..)
 
@@ -26,8 +26,8 @@ main =
 type alias Model =
     { rulesInput : String
     , questionInput : String
-    , rules : Maybe (List Proposition)
-    , question : Maybe Proposition
+    , rules : Maybe (List ( Int, Proposition ))
+    , question : Maybe ( Int, Proposition )
     }
 
 
@@ -43,11 +43,11 @@ init =
     , questionInput = "c"
     , rules =
         Just
-            [ Implies (And (Variable "a") (Variable "b")) (Variable "c")
-            , Variable "a"
-            , Variable "b"
+            [ ( 0, Implies (And (Variable "a") (Variable "b")) (Variable "c") )
+            , ( 0, Variable "a" )
+            , ( 0, Variable "b" )
             ]
-    , question = Just (Variable "c")
+    , question = Just ( 0, Variable "c" )
     }
 
 
@@ -81,12 +81,6 @@ view model =
                 , pointer
                 ]
                 (text "Load employment law example.")
-            , el
-                [ Font.color (rgb 0 0 1)
-                , Events.onClick (LoadExample disj)
-                , pointer
-                ]
-                (text "Load disjunction example.")
             , Input.text [ logicFont ]
                 { onChange = NewQuestion
                 , text = model.questionInput
@@ -100,7 +94,7 @@ view model =
                 _ ->
                     none
             , case ( model.rules, model.question ) of
-                ( Just rules, Just question ) ->
+                ( Just rules, Just ( _, question ) ) ->
                     column
                         [ width fill
                         , spacingXY 0 20
@@ -108,7 +102,12 @@ view model =
                         [ paragraph [] [ text "Explanations:" ]
                         , column [ width fill ]
                             (explanation question rules
-                                |> List.map (viewExplanation 0)
+                                |> Maybe.map
+                                    (\{ pro, contra } ->
+                                        List.map (viewExplanation 0 True) pro
+                                            ++ List.map (viewExplanation 0 False) contra
+                                    )
+                                |> Maybe.withDefault [ text "Some information is missing." ]
                             )
                         ]
 
@@ -118,31 +117,59 @@ view model =
         )
 
 
-viewExplanation : Int -> Argument -> Element msg
-viewExplanation depth a =
+viewExplanation : Int -> Bool -> Argument -> Element msg
+viewExplanation depth isPro a =
     let
         indented depth_ x =
             row [ width fill ]
-                [ column [ width (px (depth_ * 20)) ] []
+                [ column
+                    [ width (px (depth_ * 20))
+                    ]
+                    []
                 , column
                     [ width fill
-                    , Background.color (rgba 0 0 0 ((toFloat depth_ + 1) * 0.1))
+                    , Background.color
+                        (rgba 0
+                            0
+                            0
+                            (if isPro then
+                                (toFloat depth_ + 1) * 0.05
+
+                             else
+                                1 - ((toFloat depth + 1) * 0.05)
+                            )
+                        )
+                    , Font.color
+                        (if isPro then
+                            rgb 0 0 0
+
+                         else
+                            rgb 1 1 1
+                        )
                     , padding 5
                     ]
                     [ x ]
                 ]
+
+        rank j =
+            if j == 0 then
+                ""
+
+            else
+                String.fromInt j ++ ": "
     in
     column
         [ width fill
         , spacing 2
         ]
         (case a of
-            Assumption p ->
-                [ indented depth (text (string.fromProposition p)) ]
+            Assumption ( i, p ) ->
+                [ indented depth (text (rank i ++ string.fromProposition p)) ]
 
-            Argument p l ->
-                indented depth (text (string.fromProposition p))
-                    :: List.map (viewExplanation (depth + 1)) l
+            Argument ( i, p ) { pro, contra } ->
+                indented depth (text (rank i ++ string.fromProposition p))
+                    :: List.map (viewExplanation (depth + 1) isPro) pro
+                    ++ List.map (viewExplanation (depth + 1) (not isPro)) contra
         )
 
 
@@ -206,9 +233,4 @@ employment =
     )
 
 
-disj =
-    ( "c"
-    , [ "a or b -> c"
-      , "a or b"
-      ]
-    )
+
