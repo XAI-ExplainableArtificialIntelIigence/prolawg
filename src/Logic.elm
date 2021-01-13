@@ -25,7 +25,7 @@ decompose p =
                 [ decompose a
                 , decompose b
 
-                , decompose (And a b)
+                --, decompose (And a b)
                 ]
 
         Implies a b ->
@@ -225,31 +225,50 @@ powerset =
     List.foldr (\x acc -> acc ++ List.map ((::) x) acc) [ [] ]
 
 
+consistentCases a b =
+    List.filter (\c -> List.all consistent (combine [ c ] a)) b
+
+
 arguments : List (List Fact) -> List Proposition -> List Argument
 arguments question information =
+    let
+        _ =
+            Debug.log "question" question
+    in
     information
-        |> List.filter (\p -> shrinks (negate question) (cases p))
         |> List.map
             (\p ->
-                if closes (cases p) (negate question) then
-                    Just (Assumption p)
+                let
+                    cases_ =
+                        cases p
 
-                else
+                    negatedQuestion =
+                        negate question
+
+                    restQuestion =
+                        consistentCases cases_ negatedQuestion ++ consistentCases negatedQuestion cases_
+                in
+                if List.length restQuestion < (List.length cases_ * List.length negatedQuestion) then
                     let
-                        subarguments =
-                            information
-                                |> List.remove p
-                                |> arguments
-                                    (cases p
-                                        |> List.filter (\c -> not (impossible (combine [ c ] (negate question))))
-                                        |> negate
-                                    )
+                        _ =
+                            Debug.log "restQuestion" restQuestion
+
+                        _ =
+                            Debug.log "negate restQuestion" (negate restQuestion)
                     in
-                    if List.length subarguments > 0 then
-                        Just (Argument p subarguments)
+                    if List.length restQuestion == 0 then
+                        Just (Assumption p)
 
                     else
-                        Nothing
+                        case arguments (negate restQuestion) (List.remove p information) of
+                            a :: b ->
+                                Just (Argument p (a :: b))
+
+                            [] ->
+                                Nothing
+
+                else
+                    Nothing
             )
         |> Maybe.values
 

@@ -12107,9 +12107,7 @@ var $author$project$Logic$decompose = function (p) {
 					_List_fromArray(
 						[
 							$author$project$Logic$decompose(a),
-							$author$project$Logic$decompose(b),
-							$author$project$Logic$decompose(
-							A2($author$project$Types$And, a, b))
+							$author$project$Logic$decompose(b)
 						]));
 			case 'Implies':
 				var a = p.a;
@@ -12221,21 +12219,23 @@ var $author$project$Logic$combine = F2(
 				_List_fromArray(
 					[a, b])));
 	});
-var $author$project$Logic$inconsistent = A2(
-	$elm$core$Basics$composeR,
-	$elm_community$list_extra$List$Extra$uniquePairs,
-	$elm$core$List$any(
-		function (_v0) {
-			var a = _v0.a;
-			var b = _v0.b;
-			return A2($author$project$Logic$contradicts, a, b);
-		}));
-var $author$project$Logic$impossible = $elm$core$List$all($author$project$Logic$inconsistent);
-var $author$project$Logic$closes = F2(
-	function (a, l) {
-		return $author$project$Logic$impossible(
-			A2($author$project$Logic$combine, a, l)) && (!$author$project$Logic$impossible(l));
+var $author$project$Logic$consistentCases = F2(
+	function (a, b) {
+		return A2(
+			$elm$core$List$filter,
+			function (c) {
+				return A2(
+					$elm$core$List$all,
+					$author$project$Logic$consistent,
+					A2(
+						$author$project$Logic$combine,
+						_List_fromArray(
+							[c]),
+						a));
+			},
+			b);
 	});
+var $elm$core$Debug$log = _Debug_log;
 var $author$project$Logic$negateFact = function (fact) {
 	if (fact.$ === 'Positive') {
 		var a = fact.a;
@@ -12264,17 +12264,6 @@ var $elm_community$list_extra$List$Extra$remove = F2(
 				A2($elm_community$list_extra$List$Extra$remove, x, ys));
 		}
 	});
-var $author$project$Logic$shrinks = F2(
-	function (a, b) {
-		return _Utils_cmp(
-			$elm$core$List$length(
-				A2(
-					$elm$core$List$filter,
-					$author$project$Logic$inconsistent,
-					A2($author$project$Logic$combine, a, b))),
-			$elm$core$List$length(
-				A2($elm$core$List$filter, $author$project$Logic$inconsistent, b))) > 0;
-	});
 var $elm_community$maybe_extra$Maybe$Extra$cons = F2(
 	function (item, list) {
 		if (item.$ === 'Just') {
@@ -12287,47 +12276,50 @@ var $elm_community$maybe_extra$Maybe$Extra$cons = F2(
 var $elm_community$maybe_extra$Maybe$Extra$values = A2($elm$core$List$foldr, $elm_community$maybe_extra$Maybe$Extra$cons, _List_Nil);
 var $author$project$Logic$arguments = F2(
 	function (question, information) {
+		var _v0 = A2($elm$core$Debug$log, 'question', question);
 		return $elm_community$maybe_extra$Maybe$Extra$values(
 			A2(
 				$elm$core$List$map,
 				function (p) {
-					if (A2(
-						$author$project$Logic$closes,
-						$author$project$Logic$cases(p),
-						$author$project$Logic$negate(question))) {
-						return $elm$core$Maybe$Just(
-							$author$project$Types$Assumption(p));
+					var negatedQuestion = $author$project$Logic$negate(question);
+					var cases_ = $author$project$Logic$cases(p);
+					var restQuestion = _Utils_ap(
+						A2($author$project$Logic$consistentCases, cases_, negatedQuestion),
+						A2($author$project$Logic$consistentCases, negatedQuestion, cases_));
+					if (_Utils_cmp(
+						$elm$core$List$length(restQuestion),
+						$elm$core$List$length(cases_) * $elm$core$List$length(negatedQuestion)) < 0) {
+						var _v1 = A2($elm$core$Debug$log, 'restQuestion', restQuestion);
+						var _v2 = A2(
+							$elm$core$Debug$log,
+							'negate restQuestion',
+							$author$project$Logic$negate(restQuestion));
+						if (!$elm$core$List$length(restQuestion)) {
+							return $elm$core$Maybe$Just(
+								$author$project$Types$Assumption(p));
+						} else {
+							var _v3 = A2(
+								$author$project$Logic$arguments,
+								$author$project$Logic$negate(restQuestion),
+								A2($elm_community$list_extra$List$Extra$remove, p, information));
+							if (_v3.b) {
+								var a = _v3.a;
+								var b = _v3.b;
+								return $elm$core$Maybe$Just(
+									A2(
+										$author$project$Types$Argument,
+										p,
+										A2($elm$core$List$cons, a, b)));
+							} else {
+								return $elm$core$Maybe$Nothing;
+							}
+						}
 					} else {
-						var subarguments = A2(
-							$author$project$Logic$arguments,
-							$author$project$Logic$negate(
-								A2(
-									$elm$core$List$filter,
-									function (c) {
-										return !$author$project$Logic$impossible(
-											A2(
-												$author$project$Logic$combine,
-												_List_fromArray(
-													[c]),
-												$author$project$Logic$negate(question)));
-									},
-									$author$project$Logic$cases(p))),
-							A2($elm_community$list_extra$List$Extra$remove, p, information));
-						return ($elm$core$List$length(subarguments) > 0) ? $elm$core$Maybe$Just(
-							A2($author$project$Types$Argument, p, subarguments)) : $elm$core$Maybe$Nothing;
+						return $elm$core$Maybe$Nothing;
 					}
 				},
-				A2(
-					$elm$core$List$filter,
-					function (p) {
-						return A2(
-							$author$project$Logic$shrinks,
-							$author$project$Logic$negate(question),
-							$author$project$Logic$cases(p));
-					},
-					information)));
+				information));
 	});
-var $elm$core$Debug$log = _Debug_log;
 var $author$project$Logic$explanation = F2(
 	function (question, information) {
 		var _v0 = A2($elm$core$Debug$log, '?', question);
@@ -13997,7 +13989,10 @@ var $author$project$Main$view = function (model) {
 										])),
 									A2(
 									$mdgriffith$elm_ui$Element$column,
-									_List_Nil,
+									_List_fromArray(
+										[
+											$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill)
+										]),
 									A2(
 										$elm$core$List$map,
 										$author$project$Main$viewExplanation(0),

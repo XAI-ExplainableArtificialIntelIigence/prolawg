@@ -106,7 +106,7 @@ view model =
                         , spacingXY 0 20
                         ]
                         [ paragraph [] [ text "Explanations:" ]
-                        , column []
+                        , column [ width fill ]
                             (explanation question rules
                                 |> List.map (viewExplanation 0)
                             )
