@@ -17,27 +17,27 @@ suite =
             [ test "not" <|
                 \_ ->
                     Expect.equal
-                        (decompose (Not (Variable "A")))
+                        (dnf (Not (Variable "A")))
                         [ [ Negative "A" ] ]
             , test "and" <|
                 \_ ->
                     Expect.equal
-                        (decompose (And (Variable "A") (Variable "B")))
+                        (dnf (And (Variable "A") (Variable "B")))
                         [ [ Positive "A", Positive "B" ] ]
             , test "or" <|
                 \_ ->
                     Expect.equal
-                        (decompose (Or (Variable "A") (Variable "B")))
+                        (dnf (Or (Variable "A") (Variable "B")))
                         [ [ Positive "A" ], [ Positive "B" ] ]
             , test "implies" <|
                 \_ ->
                     Expect.equal
-                        (decompose (Implies (Variable "A") (Variable "B")))
+                        (dnf (Implies (Variable "A") (Variable "B")))
                         [ [ Negative "A" ], [ Positive "B" ] ]
             , test "equiv" <|
                 \_ ->
                     Expect.equal
-                        (decompose (Equiv (Variable "A") (Variable "B")))
+                        (dnf (Equiv (Variable "A") (Variable "B")))
                         [ [ Negative "A", Negative "B" ]
                         , [ Negative "A", Positive "A" ]
                         , [ Positive "B", Negative "B" ]
@@ -46,22 +46,22 @@ suite =
             , test "and true" <|
                 \_ ->
                     Expect.equal
-                        (decompose (And (Variable "A") True_))
+                        (dnf (And (Variable "A") True_))
                         [ [ Positive "A" ] ]
             , test "and false" <|
                 \_ ->
                     Expect.equal
-                        (decompose (And (Variable "A") False_))
+                        (dnf (And (Variable "A") False_))
                         []
             , test "or true" <|
                 \_ ->
                     Expect.equal
-                        (decompose (Or (Variable "A") True_))
+                        (dnf (Or (Variable "A") True_))
                         [ [ Positive "A" ], [] ]
             , test "or false" <|
                 \_ ->
                     Expect.equal
-                        (decompose (Or (Variable "A") False_))
+                        (dnf (Or (Variable "A") False_))
                         [ [ Positive "A" ] ]
             ]
         , describe "cases"

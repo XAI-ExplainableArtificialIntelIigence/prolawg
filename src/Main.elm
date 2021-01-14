@@ -3,6 +3,7 @@ module Main exposing (..)
 import Browser exposing (sandbox)
 import Element exposing (..)
 import Element.Background as Background
+import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
@@ -145,21 +146,63 @@ view model =
                     none
             , case ( model.rules, model.question ) of
                 ( Just ( rules, preference ), Just question ) ->
+                    let
+                        explanation_ =
+                            explanation preference question rules
+                    in
                     column
                         [ width fill
                         , spacingXY 0 20
                         ]
-                        [ paragraph [] [ text "Explanations:" ]
-                        , column [ width fill, spacing 2 ]
-                            (explanation preference question rules
-                                |> Maybe.map
-                                    (\s ->
-                                        viewArguments s 0 True
-                                            ++ [ explanationText ]
+                        ((case
+                            Maybe.map
+                                (List.filter (\l -> List.length l > 0)
+                                    << combineOpenArguments
+                                    << .relevant
+                                )
+                                explanation_
+                          of
+                            Just (h :: t) ->
+                                let
+                                    _ =
+                                        Debug.log "h :: t" (h :: t)
+                                in
+                                [ paragraph [] [ text "Further information required!" ]
+                                , paragraph [] [ text "Answer at least one of the questions in each block." ]
+                                , column [ width fill, spacing 20 ]
+                                    ((h :: t)
+                                        |> transform
+                                        |> List.sortBy List.length
+                                        |> List.map
+                                            (\l ->
+                                                column
+                                                    [ Border.width 2
+                                                    , padding 10
+                                                    , width fill
+                                                    , spacing 20
+                                                    ]
+                                                    (text "Please answer one of the following questions: "
+                                                        :: List.map (\a -> text (variable a ++ "?")) l
+                                                    )
+                                            )
                                     )
-                                |> Maybe.withDefault [ text "Some information is missing." ]
-                            )
-                        ]
+                                ]
+
+                            _ ->
+                                []
+                         )
+                            ++ [ paragraph [] [ text "Explanations:" ]
+                               , column [ width fill, spacing 2 ]
+                                    (explanation_
+                                        |> Maybe.map
+                                            (\s ->
+                                                viewArguments s 0 True
+                                                    ++ [ explanationText ]
+                                            )
+                                        |> Maybe.withDefault [ text "Some information is missing." ]
+                                    )
+                               ]
+                        )
 
                 _ ->
                     none
@@ -171,9 +214,16 @@ explanationText =
     column [ paddingXY 0 20, spacingXY 0 20 ]
         [ paragraph []
             [ text "Pro arguments are "
-            , el [ Background.color (rgba 0 0 0 0.1), padding 5 ] (text "gray")
+            , el [ Border.width 2, Border.color (rgba 0 0 0 0.1), Background.color (rgba 0 0 0 0.1), padding 5 ] (text "gray")
             , text ", contra arguments are "
-            , el [ Font.color (rgb 1 1 1), Background.color (rgb 0 0 0), padding 5 ] (text "black")
+            , el [ Border.width 2, Font.color (rgb 1 1 1), Background.color (rgb 0 0 0), padding 5 ] (text "black")
+            , text "."
+            ]
+        , paragraph []
+            [ text "Information that is not yet known is in "
+            , el [ padding 5, Border.width 2, Border.color (rgba 0 0 0 0.1) ] (text "bordered")
+            , text " "
+            , el [ padding 5, Border.width 2 ] (text "boxes")
             , text "."
             ]
         , paragraph []
@@ -187,19 +237,37 @@ explanationText =
         ]
 
 
-viewExplanation : Int -> Bool -> RelevantArgument -> Element Msg
-viewExplanation depth isPro a =
+viewRelevantArgument : Int -> Bool -> RelevantArgument -> Element Msg
+viewRelevantArgument depth isPro a =
     column
         [ width fill
         , spacing 2
         ]
         (case a of
             RelevantAssumption p ->
-                [ indented depth isPro True (text (propositionToString p)) ]
+                [ indented depth isPro True False (text (propositionToString p)) ]
 
             RelevantArgument p s ->
-                indented depth isPro True (text (propositionToString p))
+                indented depth isPro True False (text (propositionToString p))
                     :: viewArguments s (depth + 1) isPro
+
+            RelevantOpen c ->
+                [ indented depth isPro True True (text (String.join ", " (List.map factToString c))) ]
+        )
+
+
+viewDefeatedArgument : Int -> Bool -> Defeated -> Element Msg
+viewDefeatedArgument depth isPro a =
+    column
+        [ width fill
+        , spacing 2
+        ]
+        (case a of
+            DefeatedClosed p ->
+                [ indented depth isPro False False (text (propositionToString p)) ]
+
+            DefeatedOpen c ->
+                [ indented depth isPro False True (text (String.join ", " (List.map factToString c))) ]
         )
 
 
@@ -209,19 +277,27 @@ viewArguments { relevant, irrelevant } depth isPro =
         { pro, contra } =
             relevant
      in
-     List.map (viewExplanation depth isPro) pro
-        ++ List.map (viewExplanation depth (not isPro)) contra
+     List.map (viewRelevantArgument depth isPro) pro
+        ++ List.map (viewRelevantArgument depth (not isPro)) contra
     )
         ++ (let
                 { pro, contra } =
                     irrelevant
             in
-            List.map (\q -> indented depth isPro False (text (propositionToString q))) pro
-                ++ List.map (\q -> indented depth (not isPro) False (text (propositionToString q))) contra
+            List.map (viewDefeatedArgument depth isPro) pro
+                ++ List.map (viewDefeatedArgument depth isPro) contra
            )
 
 
-indented depth isPro isRelevant x =
+indented depth isPro isRelevant isOpen x =
+    let
+        color =
+            if isPro then
+                rgba 0 0 0 ((toFloat depth + 1) * 0.05)
+
+            else
+                rgba 0 0 0 (1 - ((toFloat depth + 1) * 0.05))
+    in
     row [ width fill ]
         [ column
             [ width (px (depth * 20))
@@ -230,18 +306,16 @@ indented depth isPro isRelevant x =
         , column
             ([ width fill
              , Background.color
-                (let
-                    a =
-                        if isPro then
-                            (toFloat depth + 1) * 0.05
+                (if isOpen then
+                    rgb 1 1 1
 
-                        else
-                            1 - ((toFloat depth + 1) * 0.05)
-                 in
-                 rgba 0 0 0 a
+                 else
+                    color
                 )
+             , Border.width 2
+             , Border.color color
              , Font.color
-                (if isPro then
+                (if isPro || isOpen then
                     rgb 0 0 0
 
                  else
@@ -277,7 +351,7 @@ logicFont =
 
 
 
--- EXAMPLE DATA
+-- DATA
 
 
 parseExample : List ( Int, Proposition ) -> ( List Proposition, Preference )

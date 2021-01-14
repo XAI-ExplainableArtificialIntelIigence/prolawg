@@ -4,15 +4,7 @@ import List.Extra as List
 
 
 
-type Proposition
-    = Variable String
-    | Not Proposition
-    | And Proposition Proposition
-    | Or Proposition Proposition
-    | Implies Proposition Proposition
-    | Equiv Proposition Proposition
-    | True_
-    | False_
+-- FACTS
 
 
 type Fact
@@ -20,79 +12,14 @@ type Fact
     | Negative String
 
 
-{-| Disjunctive normal form.
--}
-type alias DNF =
-    List (List Fact)
+variable : Fact -> String
+variable a =
+    case a of
+        Positive b ->
+            b
 
-
-decompose : Proposition -> DNF
-decompose p =
-    case p of
-        Variable a ->
-            [ [ Positive a ] ]
-
-        And a b ->
-            List.map List.concat
-                (List.cartesianProduct
-                    [ decompose a
-                    , decompose b
-                    ]
-                )
-
-        Or a b ->
-            List.concat
-                [ decompose a
-                , decompose b
-
-                --, decompose (And a b)
-                ]
-
-        Implies a b ->
-            decompose (Or (Not a) b)
-
-        Equiv a b ->
-            decompose (And (Implies a b) (Implies b a))
-
-        True_ ->
-            [ [] ]
-
-        False_ ->
-            []
-
-        Not (Variable a) ->
-            [ [ Negative a ] ]
-
-        Not (And a b) ->
-            decompose (Or (Not a) (Not b))
-
-        Not (Or a b) ->
-            decompose (And (Not a) (Not b))
-
-        Not (Implies a b) ->
-            decompose (Implies (Not b) (Not a))
-
-        Not (Equiv a b) ->
-            decompose (Or (Not (Implies a b)) (Not (Implies b a)))
-
-        Not (Not a) ->
-            decompose a
-
-        Not True_ ->
-            decompose False_
-
-        Not False_ ->
-            decompose True_
-
-
-opposite : Proposition -> Proposition
-opposite p =
-    case p of
-        Not q ->
-            q
-
-        _ ->
-            Not p
+        Negative b ->
+            b
 
 
 contradicts : Fact -> Fact -> Bool
@@ -114,48 +41,33 @@ inconsistent =
         >> List.any (\( a, b ) -> contradicts a b)
 
 
-impossible : DNF -> Bool
-impossible =
-    List.all inconsistent
-
-
-add : Fact -> DNF -> DNF
-add a =
-    List.map ((::) a)
-
-
-combine : DNF -> DNF -> DNF
-combine a b =
-    List.cartesianProduct [ a, b ] |> List.map List.concat
-
-
-closes : DNF -> DNF -> Bool
-closes a l =
-    impossible (combine a l) && not (impossible l)
-
-
-shrinks : DNF -> DNF -> Bool
-shrinks a b =
-    List.length (List.filter inconsistent (combine a b))
-        > List.length (List.filter inconsistent b)
-
-
 consistent : List Fact -> Bool
 consistent =
     List.uniquePairs
         >> List.all (\( a, b ) -> not (contradicts a b))
 
 
-cases : Proposition -> DNF
-cases p =
-    List.filter consistent (decompose p)
+
+-- DNF, CNF
 
 
-closures : Proposition -> DNF
-closures p =
-    List.filter inconsistent (decompose p)
+{-| Disjunctive normal form.
+-}
+type alias DNF =
+    List (List Fact)
 
 
+{-| Conjunctive normal form.
+-}
+type alias CNF =
+    List (List Fact)
+
+
+{-| Convert CNF <-> DNF.
+-}
+transform : List (List Fact) -> List (List Fact)
+transform =
+    List.cartesianProduct >> List.filter consistent
 
 
 negateFact : Fact -> Fact
@@ -169,13 +81,127 @@ negateFact fact =
 
 
 negate_ : DNF -> DNF
-negate_ l =
-    l |> List.cartesianProduct |> List.map (List.map negateFact)
+negate_ =
+    List.cartesianProduct
+        >> List.filter consistent
+        >> List.map (List.map negateFact)
+
+
+impossible : DNF -> Bool
+impossible =
+    List.all inconsistent
+
+
+combine : DNF -> DNF -> DNF
+combine a b =
+    List.cartesianProduct [ a, b ]
+        |> List.map List.concat
+
+
+closes : DNF -> DNF -> Bool
+closes a l =
+    impossible (combine a l)
+        && not (impossible l)
+
+
+shrinks : DNF -> DNF -> Bool
+shrinks a b =
+    List.length (List.filter inconsistent (combine a b))
+        > List.length (List.filter inconsistent b)
 
 
 consistentCases : DNF -> DNF -> DNF
 consistentCases a b =
     List.filter (\c -> List.all consistent (combine [ c ] a)) b
+
+
+
+-- PROPOSITIONS
+
+
+type Proposition
+    = Variable String
+    | Not Proposition
+    | And Proposition Proposition
+    | Or Proposition Proposition
+    | Implies Proposition Proposition
+    | Equiv Proposition Proposition
+    | True_
+    | False_
+
+
+dnf : Proposition -> DNF
+dnf p =
+    case p of
+        Variable a ->
+            [ [ Positive a ] ]
+
+        And a b ->
+            List.map List.concat
+                (List.cartesianProduct
+                    [ dnf a
+                    , dnf b
+                    ]
+                )
+
+        Or a b ->
+            List.concat [ dnf a, dnf b ]
+
+        Implies a b ->
+            dnf (Or (Not a) b)
+
+        Equiv a b ->
+            dnf (And (Implies a b) (Implies b a))
+
+        True_ ->
+            [ [] ]
+
+        False_ ->
+            []
+
+        Not (Variable a) ->
+            [ [ Negative a ] ]
+
+        Not (And a b) ->
+            dnf (Or (Not a) (Not b))
+
+        Not (Or a b) ->
+            dnf (And (Not a) (Not b))
+
+        Not (Implies a b) ->
+            dnf (Implies (Not b) (Not a))
+
+        Not (Equiv a b) ->
+            dnf (Or (Not (Implies a b)) (Not (Implies b a)))
+
+        Not (Not a) ->
+            dnf a
+
+        Not True_ ->
+            dnf False_
+
+        Not False_ ->
+            dnf True_
+
+
+opposite : Proposition -> Proposition
+opposite p =
+    case p of
+        Not q ->
+            q
+
+        _ ->
+            Not p
+
+
+cases : Proposition -> DNF
+cases p =
+    List.filter consistent (dnf p)
+
+
+closures : Proposition -> DNF
+closures p =
+    List.filter inconsistent (dnf p)
 
 
 
