@@ -175,7 +175,7 @@ view model =
                                         |> List.sortBy List.length
                                         |> List.map
                                             (\l ->
-                                                column
+                                                column 
                                                     [ Border.width 2
                                                     , padding 10
                                                     , width fill
