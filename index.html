@@ -12681,98 +12681,55 @@ var $elm$core$List$partition = F2(
 			_Utils_Tuple2(_List_Nil, _List_Nil),
 			list);
 	});
+var $author$project$Logic$Argumentation$argumentToRelevantArgument = F2(
+	function (preference, a) {
+		if (a.$ === 'Assumption') {
+			var h = a.a;
+			return $author$project$Logic$Argumentation$RelevantAssumption(h);
+		} else {
+			var h = a.a;
+			var l = a.b;
+			return A2(
+				$author$project$Logic$Argumentation$RelevantArgument,
+				h,
+				A2($author$project$Logic$Argumentation$winnersLosers, preference, l));
+		}
+	});
 var $author$project$Logic$Argumentation$winnersLosers = F2(
 	function (preference, _v0) {
 		var pro = _v0.pro;
 		var contra = _v0.contra;
-		var candidates = _Utils_ap(
-			A2(
-				$elm$core$List$map,
-				function (a) {
-					return _Utils_Tuple2(true, a);
-				},
-				pro),
-			A2(
-				$elm$core$List$map,
-				function (a) {
-					return _Utils_Tuple2(false, a);
-				},
-				contra));
 		var _v1 = A2(
 			$elm$core$List$partition,
-			function (_v2) {
-				var isPro = _v2.a;
-				var a = _v2.b;
-				var opponents = A2(
-					$elm$core$List$map,
-					$elm$core$Tuple$second,
-					A2(
-						$elm$core$List$filter,
-						function (_v3) {
-							var isPro_ = _v3.a;
-							return _Utils_eq(isPro_, isPro);
-						},
-						candidates));
-				return A3($author$project$Logic$Argumentation$isRebutted, preference, opponents, a) || A2($author$project$Logic$Argumentation$isDefeated, preference, a);
+			function (a) {
+				return A3($author$project$Logic$Argumentation$isRebutted, preference, contra, a) || A2($author$project$Logic$Argumentation$isDefeated, preference, a);
 			},
-			candidates);
-		var losers = _v1.a;
-		var winners = _v1.b;
+			pro);
+		var proLosers = _v1.a;
+		var proWinners = _v1.b;
+		var _v2 = A2(
+			$elm$core$List$partition,
+			function (a) {
+				return A3($author$project$Logic$Argumentation$isRebutted, preference, pro, a) || A2($author$project$Logic$Argumentation$isDefeated, preference, a);
+			},
+			contra);
+		var contraLosers = _v2.a;
+		var contraWinners = _v2.b;
 		return {
-			irrelevant: function () {
-				var _v4 = A2(
-					$elm$core$List$partition,
-					$elm$core$Tuple$first,
-					A2(
-						$elm$core$List$map,
-						function (_v5) {
-							var isPro = _v5.a;
-							var a = _v5.b;
-							return _Utils_Tuple2(
-								isPro,
-								$author$project$Logic$Argumentation$head(a));
-						},
-						losers));
-				var pro_ = _v4.a;
-				var contra_ = _v4.b;
-				return {
-					contra: A2($elm$core$List$map, $elm$core$Tuple$second, contra_),
-					pro: A2($elm$core$List$map, $elm$core$Tuple$second, pro_)
-				};
-			}(),
-			relevant: function () {
-				var _v6 = A2(
-					$elm$core$List$partition,
-					$elm$core$Tuple$first,
-					A2(
-						$elm$core$List$map,
-						function (_v7) {
-							var isPro = _v7.a;
-							var a = _v7.b;
-							if (a.$ === 'Assumption') {
-								var h = a.a;
-								return _Utils_Tuple2(
-									isPro,
-									$author$project$Logic$Argumentation$RelevantAssumption(h));
-							} else {
-								var h = a.a;
-								var l = a.b;
-								return _Utils_Tuple2(
-									isPro,
-									A2(
-										$author$project$Logic$Argumentation$RelevantArgument,
-										h,
-										A2($author$project$Logic$Argumentation$winnersLosers, preference, l)));
-							}
-						},
-						winners));
-				var pro_ = _v6.a;
-				var contra_ = _v6.b;
-				return {
-					contra: A2($elm$core$List$map, $elm$core$Tuple$second, contra_),
-					pro: A2($elm$core$List$map, $elm$core$Tuple$second, pro_)
-				};
-			}()
+			irrelevant: {
+				contra: A2($elm$core$List$map, $author$project$Logic$Argumentation$head, contraLosers),
+				pro: A2($elm$core$List$map, $author$project$Logic$Argumentation$head, proLosers)
+			},
+			relevant: {
+				contra: A2(
+					$elm$core$List$map,
+					$author$project$Logic$Argumentation$argumentToRelevantArgument(preference),
+					contraWinners),
+				pro: A2(
+					$elm$core$List$map,
+					$author$project$Logic$Argumentation$argumentToRelevantArgument(preference),
+					proWinners)
+			}
 		};
 	});
 var $author$project$Logic$Argumentation$explanation = F3(

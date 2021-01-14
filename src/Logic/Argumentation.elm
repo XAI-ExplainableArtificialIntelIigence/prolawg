@@ -127,6 +127,16 @@ isRebutted preferred opponents a =
         |> List.any (\b -> Maybe.withDefault False (preferred (head b) (head a)))
 
 
+argumentToRelevantArgument : Preference -> Argument -> RelevantArgument
+argumentToRelevantArgument preference a =
+    case a of
+        Assumption h ->
+            RelevantAssumption h
+
+        Argument h l ->
+            RelevantArgument h (winnersLosers preference l)
+
+
 winnersLosers :
     Preference
     ->
@@ -136,43 +146,17 @@ winnersLosers :
     -> Support
 winnersLosers preference { pro, contra } =
     let
-        candidates =
-            List.map (\a -> ( True, a )) pro ++ List.map (\a -> ( False, a )) contra
+        ( proLosers, proWinners ) =
+            List.partition (\a -> isRebutted preference contra a || isDefeated preference a) pro
 
-        ( losers, winners ) =
-            List.partition
-                (\( isPro, a ) ->
-                    let
-                        opponents =
-                            List.filter (\( isPro_, _ ) -> isPro_ == isPro) candidates
-                                |> List.map Tuple.second
-                    in
-                    isRebutted preference opponents a || isDefeated preference a
-                )
-                candidates
+        ( contraLosers, contraWinners ) =
+            List.partition (\a -> isRebutted preference pro a || isDefeated preference a) contra
     in
     { relevant =
-        let
-            ( pro_, contra_ ) =
-                winners
-                    |> List.map
-                        (\( isPro, a ) ->
-                            case a of
-                                Assumption h ->
-                                    ( isPro, RelevantAssumption h )
-
-                                Argument h l ->
-                                    ( isPro, RelevantArgument h (winnersLosers preference l) )
-                        )
-                    |> List.partition Tuple.first
-        in
-        { pro = List.map Tuple.second pro_, contra = List.map Tuple.second contra_ }
-    , irrelevant =
-        let
-            ( pro_, contra_ ) =
-                losers |> List.map (\( isPro, a ) -> ( isPro, head a )) |> List.partition Tuple.first
-        in
-        { pro = List.map Tuple.second pro_, contra = List.map Tuple.second contra_ }
+        { pro = List.map (argumentToRelevantArgument preference) proWinners
+        , contra = List.map (argumentToRelevantArgument preference) contraWinners
+        }
+    , irrelevant = { pro = List.map head proLosers, contra = List.map head contraLosers }
     }
 
 
