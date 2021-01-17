@@ -4757,73 +4757,6 @@ var $elm$core$Maybe$map = F2(
 			return $elm$core$Maybe$Nothing;
 		}
 	});
-var $elm$core$Basics$eq = _Utils_equal;
-var $elm_community$list_extra$List$Extra$find = F2(
-	function (predicate, list) {
-		find:
-		while (true) {
-			if (!list.b) {
-				return $elm$core$Maybe$Nothing;
-			} else {
-				var first = list.a;
-				var rest = list.b;
-				if (predicate(first)) {
-					return $elm$core$Maybe$Just(first);
-				} else {
-					var $temp$predicate = predicate,
-						$temp$list = rest;
-					predicate = $temp$predicate;
-					list = $temp$list;
-					continue find;
-				}
-			}
-		}
-	});
-var $elm_community$maybe_extra$Maybe$Extra$join = function (mx) {
-	if (mx.$ === 'Just') {
-		var x = mx.a;
-		return x;
-	} else {
-		return $elm$core$Maybe$Nothing;
-	}
-};
-var $elm$core$Tuple$second = function (_v0) {
-	var y = _v0.b;
-	return y;
-};
-var $author$project$Main$parseExample = function (l) {
-	return _Utils_Tuple2(
-		A2($elm$core$List$map, $elm$core$Tuple$second, l),
-		F2(
-			function (a, b) {
-				return $elm_community$maybe_extra$Maybe$Extra$join(
-					A2(
-						$elm$core$Maybe$map,
-						function (_v1) {
-							var i = _v1.a;
-							return A2(
-								$elm$core$Maybe$map,
-								function (_v3) {
-									var j = _v3.a;
-									return _Utils_cmp(i, j) > 0;
-								},
-								A2(
-									$elm_community$list_extra$List$Extra$find,
-									function (_v2) {
-										var q = _v2.b;
-										return _Utils_eq(q, b);
-									},
-									l));
-						},
-						A2(
-							$elm_community$list_extra$List$Extra$find,
-							function (_v0) {
-								var p = _v0.b;
-								return _Utils_eq(p, a);
-							},
-							l)));
-			}));
-};
 var $elm$core$Basics$composeR = F3(
 	function (f, g, x) {
 		return g(
@@ -4848,6 +4781,7 @@ var $elm$core$Basics$apL = F2(
 	function (f, x) {
 		return f(x);
 	});
+var $elm$core$Basics$eq = _Utils_equal;
 var $elm$parser$Parser$Advanced$AddRight = F2(
 	function (a, b) {
 		return {$: 'AddRight', a: a, b: b};
@@ -6082,6 +6016,72 @@ var $author$project$Logic$Parser$parseRanked = A2(
 	$elm$core$Basics$composeR,
 	$elm$parser$Parser$run($author$project$Logic$Parser$rankedLogic),
 	$elm$core$Result$toMaybe);
+var $elm_community$list_extra$List$Extra$find = F2(
+	function (predicate, list) {
+		find:
+		while (true) {
+			if (!list.b) {
+				return $elm$core$Maybe$Nothing;
+			} else {
+				var first = list.a;
+				var rest = list.b;
+				if (predicate(first)) {
+					return $elm$core$Maybe$Just(first);
+				} else {
+					var $temp$predicate = predicate,
+						$temp$list = rest;
+					predicate = $temp$predicate;
+					list = $temp$list;
+					continue find;
+				}
+			}
+		}
+	});
+var $elm_community$maybe_extra$Maybe$Extra$join = function (mx) {
+	if (mx.$ === 'Just') {
+		var x = mx.a;
+		return x;
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
+var $elm$core$Tuple$second = function (_v0) {
+	var y = _v0.b;
+	return y;
+};
+var $author$project$Logic$Argumentation$rankingToPreference = function (l) {
+	return _Utils_Tuple2(
+		A2($elm$core$List$map, $elm$core$Tuple$second, l),
+		F2(
+			function (a, b) {
+				return $elm_community$maybe_extra$Maybe$Extra$join(
+					A2(
+						$elm$core$Maybe$map,
+						function (_v1) {
+							var i = _v1.a;
+							return A2(
+								$elm$core$Maybe$map,
+								function (_v3) {
+									var j = _v3.a;
+									return _Utils_cmp(i, j) > 0;
+								},
+								A2(
+									$elm_community$list_extra$List$Extra$find,
+									function (_v2) {
+										var q = _v2.b;
+										return _Utils_eq(q, b);
+									},
+									l));
+						},
+						A2(
+							$elm_community$list_extra$List$Extra$find,
+							function (_v0) {
+								var p = _v0.b;
+								return _Utils_eq(p, a);
+							},
+							l)));
+			}));
+};
 var $author$project$Main$init = {
 	question: A2(
 		$elm$core$Maybe$map,
@@ -6090,7 +6090,7 @@ var $author$project$Main$init = {
 	questionInput: $author$project$Main$initialQuestion,
 	rules: A2(
 		$elm$core$Maybe$map,
-		$author$project$Main$parseExample,
+		$author$project$Logic$Argumentation$rankingToPreference,
 		$elm_community$maybe_extra$Maybe$Extra$combine(
 			A2($elm$core$List$map, $author$project$Logic$Parser$parseRanked, $author$project$Main$initialRules))),
 	rulesInput: A2($elm$core$String$join, '\n', $author$project$Main$initialRules),
@@ -6765,7 +6765,7 @@ var $author$project$Main$update = F2(
 					{
 						rules: A2(
 							$elm$core$Maybe$map,
-							$author$project$Main$parseExample,
+							$author$project$Logic$Argumentation$rankingToPreference,
 							$elm_community$maybe_extra$Maybe$Extra$combine(
 								A2(
 									$elm$core$List$map,
@@ -6803,7 +6803,7 @@ var $author$project$Main$update = F2(
 						questionInput: question,
 						rules: A2(
 							$elm$core$Maybe$map,
-							$author$project$Main$parseExample,
+							$author$project$Logic$Argumentation$rankingToPreference,
 							$elm_community$maybe_extra$Maybe$Extra$combine(
 								A2($elm$core$List$map, $author$project$Logic$Parser$parseRanked, rules))),
 						rulesInput: A2($elm$core$String$join, '\n', rules) + '\n'
@@ -13132,7 +13132,6 @@ var $author$project$Logic$Core$inconsistent = A2(
 			return A2($author$project$Logic$Core$contradicts, a, b);
 		}));
 var $author$project$Logic$Core$impossible = $elm$core$List$all($author$project$Logic$Core$inconsistent);
-var $elm$core$Debug$log = _Debug_log;
 var $author$project$Logic$Core$negateFact = function (fact) {
 	if (fact.$ === 'Positive') {
 		var a = fact.a;
@@ -13198,7 +13197,7 @@ var $author$project$Logic$Argumentation$arguments = F3(
 						var decisive = _Utils_eq(restQuestion, _List_Nil);
 						var relevant = _Utils_cmp(
 							$elm$core$List$length(restQuestion),
-							$elm$core$List$length(cases_) * $elm$core$List$length(negatedQuestion)) < 0;
+							$elm$core$List$length(cases_) + $elm$core$List$length(negatedQuestion)) < 0;
 						var _v0 = _Utils_Tuple2(relevant, decisive);
 						if (_v0.a) {
 							if (_v0.b) {
@@ -13212,10 +13211,6 @@ var $author$project$Logic$Argumentation$arguments = F3(
 									A2($elm_community$list_extra$List$Extra$remove, p, information));
 								var pro = _v1.pro;
 								var contra = _v1.contra;
-								var _v2 = A2(
-									$elm$core$Debug$log,
-									'original, restQuestion',
-									_Utils_Tuple2(originalQuestion, restQuestion));
 								return ((!_Utils_eq(pro, _List_Nil)) && (!_Utils_eq(contra, _List_Nil))) ? $elm$core$Maybe$Just(
 									A2(
 										$author$project$Logic$Argumentation$Argument,
@@ -13364,8 +13359,10 @@ var $author$project$Logic$Argumentation$winnersLosers = F2(
 			winners: {contra: contraWinners, pro: proWinners}
 		};
 	});
-var $author$project$Logic$Argumentation$explanation = F3(
-	function (preference, question, information) {
+var $author$project$Logic$Argumentation$explanation = F2(
+	function (question, _v0) {
+		var information = _v0.a;
+		var preference = _v0.b;
 		return A2(
 			$author$project$Logic$Argumentation$winnersLosers,
 			preference,
@@ -15021,7 +15018,10 @@ var $author$project$Main$view = function (model) {
 							var rules = _v3.a;
 							var preference = _v3.b;
 							var question = _v1.b.a;
-							var _v4 = A3($author$project$Logic$Argumentation$explanation, preference, question, rules);
+							var _v4 = A2(
+								$author$project$Logic$Argumentation$explanation,
+								question,
+								_Utils_Tuple2(rules, preference));
 							var winners = _v4.winners;
 							var losers = _v4.losers;
 							return A2(

@@ -6,8 +6,28 @@ import Maybe
 import Maybe.Extra as Maybe
 
 
+{-| Preference relation: If the two propositions attack each other, is the first proposition stronger?
+-}
 type alias Preference =
     Proposition -> Proposition -> Maybe Bool
+
+
+{-| Converts a list of ranked propositions to a list of propositions and a preference relation on them.
+-}
+rankingToPreference : List ( Int, Proposition ) -> ( List Proposition, Preference )
+rankingToPreference l =
+    ( List.map Tuple.second l
+    , \a b ->
+        l
+            |> List.find (\( _, p ) -> p == a)
+            |> Maybe.map
+                (\( i, _ ) ->
+                    l
+                        |> List.find (\( _, q ) -> q == b)
+                        |> Maybe.map (\( j, _ ) -> i > j)
+                )
+            |> Maybe.join
+    )
 
 
 type alias Support =
@@ -53,7 +73,7 @@ arguments originalQuestion question information =
                         consistentCases cases_ negatedQuestion ++ consistentCases negatedQuestion cases_
 
                     relevant =
-                        List.length restQuestion < (List.length cases_ * List.length negatedQuestion)
+                        List.length restQuestion < (List.length cases_ + List.length negatedQuestion)
 
                     decisive =
                         restQuestion == []
@@ -64,9 +84,6 @@ arguments originalQuestion question information =
 
                     ( True, False ) ->
                         let
-                            _ =
-                                Debug.log "original, restQuestion" ( originalQuestion, restQuestion )
-
                             { pro, contra } =
                                 proContra originalQuestion (negate_ restQuestion) (List.remove p information)
                         in
@@ -83,7 +100,10 @@ arguments originalQuestion question information =
         |> (\l ->
                 case l of
                     [] ->
-                        if impossible (combine (negate_ originalQuestion) question) then
+                        if
+                            impossible (combine (negate_ originalQuestion) question)
+                                || impossible (combine originalQuestion question)
+                        then
                             []
 
                         else
@@ -166,8 +186,8 @@ winnersLosers preference { pro, contra } =
     }
 
 
-explanation : Preference -> Proposition -> List Proposition -> { winners : Support, losers : Support }
-explanation preference question information =
+explanation : Proposition -> ( List Proposition, Preference ) -> { winners : Support, losers : Support }
+explanation question ( information, preference ) =
     winnersLosers preference (proContra (cases question) (cases question) information)
 
 

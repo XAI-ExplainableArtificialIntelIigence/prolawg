@@ -12,6 +12,16 @@ type Fact
     | Negative String
 
 
+factToString : Fact -> String
+factToString f =
+    case f of
+        Positive a ->
+            a
+
+        Negative a ->
+            "¬" ++ a
+
+
 variable : Fact -> String
 variable a =
     case a of
@@ -98,11 +108,6 @@ combine a b =
         |> List.map List.concat
 
 
-equivalent : DNF -> DNF -> Bool
-equivalent a b =
-    impossible (combine a (negate_ b))
-
-
 closes : DNF -> DNF -> Bool
 closes a l =
     impossible (combine a l)
@@ -133,6 +138,54 @@ type Proposition
     | Equiv Proposition Proposition
     | True_
     | False_
+
+
+propositionToString : Proposition -> String
+propositionToString p =
+    propositionToString_ True p
+
+
+propositionToString_ : Bool -> Proposition -> String
+propositionToString_ outer p =
+    let
+        ifInner a =
+            if outer then
+                ""
+
+            else
+                a
+
+        join x a b =
+            ifInner "("
+                ++ String.join x (List.sort [ propositionToString_ False a, propositionToString_ False b ])
+                ++ ifInner ")"
+    in
+    case p of
+        Variable a ->
+            a
+
+        And a b ->
+            join " ∧ " a b
+
+        Or a b ->
+            join " ∨ " a b
+
+        Implies a b ->
+            ifInner "("
+                ++ String.join " -> " [ propositionToString_ False a, propositionToString_ False b ]
+                ++ ifInner ")"
+
+        Equiv a b ->
+            join " <-> " a b
+
+        Not a ->
+            "¬" ++ propositionToString a
+
+        True_ ->
+            "True"
+
+        False_ ->
+            "False"
 
 
 dnf : Proposition -> DNF
@@ -207,65 +260,3 @@ cases p =
 closures : Proposition -> DNF
 closures p =
     List.filter inconsistent (dnf p)
-
-
-
--- STRINGIFICATION
-
-
-factToString : Fact -> String
-factToString f =
-    case f of
-        Positive a ->
-            a
-
-        Negative a ->
-            "¬" ++ a
-
-
-propositionToString : Proposition -> String
-propositionToString p =
-    propositionToString_ True p
-
-
-propositionToString_ : Bool -> Proposition -> String
-propositionToString_ outer p =
-    let
-        ifInner a =
-            if outer then
-                ""
-
-            else
-                a
-
-        join x a b =
-            ifInner "("
-                ++ String.join x (List.sort [ propositionToString_ False a, propositionToString_ False b ])
-                ++ ifInner ")"
-    in
-    case p of
-        Variable a ->
-            a
-
-        And a b ->
-            join " ∧ " a b
-
-        Or a b ->
-            join " ∨ " a b
-
-        Implies a b ->
-            ifInner "("
-                ++ String.join " -> " [ propositionToString_ False a, propositionToString_ False b ]
-                ++ ifInner ")"
-
-        Equiv a b ->
-            join " <-> " a b
-
-        Not a ->
-            "¬" ++ propositionToString a
-
-        True_ ->
-            "True"
-
-        False_ ->
-            "False"

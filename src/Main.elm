@@ -42,7 +42,7 @@ init : Model
 init =
     { rulesInput = String.join "\n" initialRules
     , questionInput = initialQuestion
-    , rules = initialRules |> List.map parseRanked |> Maybe.combine |> Maybe.map parseExample
+    , rules = initialRules |> List.map parseRanked |> Maybe.combine |> Maybe.map rankingToPreference
     , question = Maybe.map Tuple.second (parseRanked initialQuestion)
     , showDefeated = False
     }
@@ -86,7 +86,7 @@ update msg model =
                         |> List.filter (\a -> String.replace " " "" a /= "")
                         |> List.map parseRanked
                         |> Maybe.combine
-                        |> Maybe.map parseExample
+                        |> Maybe.map rankingToPreference
             }
 
         NewQuestion s ->
@@ -98,7 +98,7 @@ update msg model =
         LoadExample ( question, rules ) ->
             { model
                 | rulesInput = String.join "\n" rules ++ "\n"
-                , rules = rules |> List.map parseRanked |> Maybe.combine |> Maybe.map parseExample
+                , rules = rules |> List.map parseRanked |> Maybe.combine |> Maybe.map rankingToPreference
                 , questionInput = question
                 , question = Maybe.map Tuple.second (parseRanked question)
             }
@@ -160,7 +160,7 @@ view model =
                 ( Just ( rules, preference ), Just question ) ->
                     let
                         { winners, losers } =
-                            explanation preference question rules
+                            explanation question ( rules, preference )
                     in
                     column [ spacing 50 ]
                         [ column [ spacing 20, width fill ]
@@ -389,22 +389,6 @@ explanationText =
 
 
 -- DATA
-
-
-parseExample : List ( Int, Proposition ) -> ( List Proposition, Preference )
-parseExample l =
-    ( List.map Tuple.second l
-    , \a b ->
-        l
-            |> List.find (\( _, p ) -> p == a)
-            |> Maybe.map
-                (\( i, _ ) ->
-                    l
-                        |> List.find (\( _, q ) -> q == b)
-                        |> Maybe.map (\( j, _ ) -> i > j)
-                )
-            |> Maybe.join
-    )
 
 
 employment =
