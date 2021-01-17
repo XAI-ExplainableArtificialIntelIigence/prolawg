@@ -98,6 +98,11 @@ combine a b =
         |> List.map List.concat
 
 
+equivalent : DNF -> DNF -> Bool
+equivalent a b =
+    impossible (combine a (negate_ b))
+
+
 closes : DNF -> DNF -> Bool
 closes a l =
     impossible (combine a l)
@@ -235,7 +240,7 @@ propositionToString_ outer p =
 
         join x a b =
             ifInner "("
-                ++ String.join x (List.sort [ propositionToString a, propositionToString b ])
+                ++ String.join x (List.sort [ propositionToString_ False a, propositionToString_ False b ])
                 ++ ifInner ")"
     in
     case p of
@@ -250,7 +255,7 @@ propositionToString_ outer p =
 
         Implies a b ->
             ifInner "("
-                ++ String.join " -> " [ propositionToString a, propositionToString b ]
+                ++ String.join " -> " [ propositionToString_ False a, propositionToString_ False b ]
                 ++ ifInner ")"
 
         Equiv a b ->

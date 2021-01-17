@@ -10,13 +10,15 @@ type alias Preference =
     Proposition -> Proposition -> Maybe Bool
 
 
+type alias Support =
+    { pro : List Argument
+    , contra : List Argument
+    }
+
+
 type Argument
     = Assumption Proposition
-    | Argument
-        Proposition
-        { pro : List Argument
-        , contra : List Argument
-        }
+    | Argument Proposition Support
     | Open (List Fact)
 
 
@@ -33,33 +35,10 @@ head a =
             Nothing
 
 
-type RelevantArgument
-    = RelevantAssumption Proposition
-    | RelevantArgument Proposition Support
-    | RelevantOpen (List Fact)
-
-
-type Defeated
-    = DefeatedClosed Proposition
-    | DefeatedOpen (List Fact)
-
-
-type alias Support =
-    { relevant :
-        { pro : List RelevantArgument
-        , contra : List RelevantArgument
-        }
-    , irrelevant :
-        { pro : List Defeated
-        , contra : List Defeated
-        }
-    }
-
-
 {-| Performs resolution.
 -}
-arguments : DNF -> List Proposition -> List Argument
-arguments question information =
+arguments : DNF -> DNF -> List Proposition -> List Argument
+arguments originalQuestion question information =
     information
         |> List.map
             (\p ->
@@ -84,8 +63,18 @@ arguments question information =
                         Just (Assumption p)
 
                     ( True, False ) ->
-                        proContra (negate_ restQuestion) (List.remove p information)
-                            |> Maybe.map (\l -> Argument p l)
+                        let
+                            _ =
+                                Debug.log "original, restQuestion" ( originalQuestion, restQuestion )
+
+                            { pro, contra } =
+                                proContra originalQuestion (negate_ restQuestion) (List.remove p information)
+                        in
+                        if pro /= [] && contra /= [] then
+                            Just (Argument p { pro = pro, contra = contra })
+
+                        else
+                            Nothing
 
                     ( False, _ ) ->
                         Nothing
@@ -94,31 +83,29 @@ arguments question information =
         |> (\l ->
                 case l of
                     [] ->
-                        List.map Open question
+                        if impossible (combine (negate_ originalQuestion) question) then
+                            []
+
+                        else
+                            List.map Open question
 
                     _ ->
                         l
            )
 
 
-proContra : DNF -> List Proposition -> Maybe { pro : List Argument, contra : List Argument }
-proContra question information =
+proContra : DNF -> DNF -> List Proposition -> Support
+proContra originalQuestion question information =
     let
         pro =
-            arguments question information
+            arguments originalQuestion question information
 
         contra =
-            arguments (negate_ question) information
+            arguments originalQuestion (negate_ question) information
     in
-    case ( pro, contra ) of
-        ( [], [] ) ->
-            Nothing
-
-        _ ->
-            Just
-                { pro = pro
-                , contra = contra
-                }
+    { pro = pro
+    , contra = contra
+    }
 
 
 preferred : Preference -> Argument -> Argument -> Bool
@@ -165,39 +152,7 @@ isRebutted preference opponents a =
         |> List.any (\b -> preferred preference b a)
 
 
-argumentToRelevantArgument : Preference -> Argument -> RelevantArgument
-argumentToRelevantArgument preference a =
-    case a of
-        Assumption h ->
-            RelevantAssumption h
-
-        Argument h l ->
-            RelevantArgument h (winnersLosers preference l)
-
-        Open c ->
-            RelevantOpen c
-
-
-argumentToIrrelevantArgument : Argument -> Defeated
-argumentToIrrelevantArgument a =
-    case a of
-        Assumption h ->
-            DefeatedClosed h
-
-        Argument h _ ->
-            DefeatedClosed h
-
-        Open c ->
-            DefeatedOpen c
-
-
-winnersLosers :
-    Preference
-    ->
-        { pro : List Argument
-        , contra : List Argument
-        }
-    -> Support
+winnersLosers : Preference -> Support -> { winners : Support, losers : Support }
 winnersLosers preference { pro, contra } =
     let
         ( proLosers, proWinners ) =
@@ -206,40 +161,50 @@ winnersLosers preference { pro, contra } =
         ( contraLosers, contraWinners ) =
             List.partition (\a -> isRebutted preference pro a || isDefeated preference a) contra
     in
-    { relevant =
-        { pro = List.map (argumentToRelevantArgument preference) proWinners
-        , contra = List.map (argumentToRelevantArgument preference) contraWinners
-        }
-    , irrelevant =
-        { pro = List.map argumentToIrrelevantArgument proLosers
-        , contra = List.map argumentToIrrelevantArgument contraLosers
-        }
+    { winners = { pro = proWinners, contra = contraWinners }
+    , losers = { pro = proLosers, contra = contraLosers }
     }
 
 
-explanation : Preference -> Proposition -> List Proposition -> Maybe Support
+explanation : Preference -> Proposition -> List Proposition -> { winners : Support, losers : Support }
 explanation preference question information =
-    proContra (cases question) information |> Maybe.map (winnersLosers preference)
+    winnersLosers preference (proContra (cases question) (cases question) information)
 
 
-combineOpenArguments : { pro : List RelevantArgument, contra : List RelevantArgument } -> DNF
-combineOpenArguments { pro, contra } =
-    (openArguments pro ++ negate_ (openArguments contra))
-        |> List.uniqueBy (List.map factToString)
+openArguments : Preference -> { winners : Support, losers : Support } -> List (List String)
+openArguments preference { winners } =
+    let
+        { pro, contra } =
+            winners
+    in
+    (openArguments_ preference pro ++ openArguments_ preference contra)
+        |> List.map List.unique
+        |> List.unique
 
 
-openArguments : List RelevantArgument -> DNF
-openArguments =
-    List.map
-        (\a ->
-            case a of
-                RelevantArgument _ { relevant } ->
-                    combineOpenArguments relevant
+openArguments_ : Preference -> List Argument -> List (List String)
+openArguments_ preference l =
+    l
+        |> List.map
+            (\a ->
+                case a of
+                    Argument _ support ->
+                        openArguments preference (winnersLosers preference support)
 
-                RelevantOpen c ->
-                    [ c ]
+                    Open c ->
+                        [ List.map variable c ]
 
-                RelevantAssumption _ ->
-                    []
-        )
-        >> List.concat
+                    Assumption _ ->
+                        []
+            )
+        |> List.concat
+
+
+questions preference supports =
+    openArguments preference supports
+        |> List.cartesianProduct
+        |> List.filter (\l -> List.length l > 0)
+        |> List.map List.unique
+        |> List.map List.sort
+        |> List.unique
+        |> List.sortBy List.length

@@ -25,22 +25,17 @@ main =
         }
 
 
+
+-- MODEL
+
+
 type alias Model =
     { rulesInput : String
     , questionInput : String
     , rules : Maybe ( List Proposition, Preference )
     , question : Maybe Proposition
+    , showDefeated : Bool
     }
-
-
-type Msg
-    = NewRules String
-    | NewQuestion String
-    | LoadExample ( String, List String )
-
-
-
--- MODEL
 
 
 init : Model
@@ -49,6 +44,7 @@ init =
     , questionInput = initialQuestion
     , rules = initialRules |> List.map parseRanked |> Maybe.combine |> Maybe.map parseExample
     , question = Maybe.map Tuple.second (parseRanked initialQuestion)
+    , showDefeated = False
     }
 
 
@@ -57,15 +53,25 @@ initialQuestion =
 
 
 initialRules =
-    [ "1: a /\\ b -> x"
-    , "a and b"
-    , "2: c -> not x"
-    , "not c"
+    [ "2: a /\\ b -> x"
+
+    --, "a and b"
+    , "1: c -> not x"
+
+    --, "not c"
     ]
 
 
 
 -- UPDATE
+
+
+type Msg
+    = NewRules String
+    | NewQuestion String
+    | LoadExample ( String, List String )
+    | AddRule Proposition
+    | ShowDefeatedChecked Bool
 
 
 update : Msg -> Model -> Model
@@ -97,6 +103,21 @@ update msg model =
                 , question = Maybe.map Tuple.second (parseRanked question)
             }
 
+        AddRule a ->
+            { model
+                | rulesInput = model.rulesInput ++ "\n" ++ propositionToString a
+                , rules =
+                    case model.rules of
+                        Nothing ->
+                            Just ( [ a ], \_ _ -> Nothing )
+
+                        Just ( l, p ) ->
+                            Just ( l ++ [ a ], p )
+            }
+
+        ShowDefeatedChecked b ->
+            { model | showDefeated = b }
+
 
 
 -- VIEW
@@ -126,170 +147,143 @@ view model =
 
                 _ ->
                     none
-            , el
-                [ Font.color (rgb 0 0 1)
-                , Events.onClick (LoadExample employment)
-                , pointer
-                ]
-                (text "Load employment law example.")
             , Input.text [ logicFont ]
                 { onChange = NewQuestion
                 , text = model.questionInput
                 , placeholder = Nothing
                 , label = Input.labelAbove [] (text "Question:")
                 }
-            , case model.question of
-                Nothing ->
+            , case ( model.rules, model.question ) of
+                ( _, Nothing ) ->
                     text "Error parsing question."
 
-                _ ->
-                    none
-            , case ( model.rules, model.question ) of
                 ( Just ( rules, preference ), Just question ) ->
                     let
-                        explanation_ =
+                        { winners, losers } =
                             explanation preference question rules
                     in
-                    column
-                        [ width fill
-                        , spacingXY 0 20
-                        ]
-                        ((case
-                            Maybe.map
-                                (List.filter (\l -> List.length l > 0)
-                                    << combineOpenArguments
-                                    << .relevant
-                                )
-                                explanation_
-                          of
-                            Just (h :: t) ->
-                                let
-                                    _ =
-                                        Debug.log "h :: t" (h :: t)
-                                in
-                                [ paragraph [] [ text "Further information required!" ]
-                                , paragraph [] [ text "Answer at least one of the questions in each block." ]
-                                , column [ width fill, spacing 20 ]
-                                    ((h :: t)
-                                        |> transform
-                                        |> List.sortBy List.length
-                                        |> List.map
-                                            (\l ->
-                                                column 
-                                                    [ Border.width 2
-                                                    , padding 10
-                                                    , width fill
-                                                    , spacing 20
-                                                    ]
-                                                    (text "Please answer one of the following questions: "
-                                                        :: List.map (\a -> text (variable a ++ "?")) l
-                                                    )
-                                            )
-                                    )
-                                ]
+                    column [ spacing 50 ]
+                        [ column [ spacing 20, width fill ]
+                            (viewQuestions preference { winners = winners, losers = losers })
+                        , column [ spacing 20 ]
+                            [ text "Explanations:"
+                            , Input.checkbox []
+                                { onChange = ShowDefeatedChecked
+                                , icon = Input.defaultCheckbox
+                                , checked = model.showDefeated
+                                , label =
+                                    Input.labelRight []
+                                        (text "Show defeated arguments?")
+                                }
+                            , column [ width fill, spacing 2 ]
+                                (if winners.pro == [] && winners.contra == [] then
+                                    [ text "There are no pro or contra arguments." ]
 
-                            _ ->
-                                []
-                         )
-                            ++ [ paragraph [] [ text "Explanations:" ]
-                               , column [ width fill, spacing 2 ]
-                                    (explanation_
-                                        |> Maybe.map
-                                            (\s ->
-                                                viewArguments s 0 True
-                                                    ++ [ explanationText ]
-                                            )
-                                        |> Maybe.withDefault [ text "Some information is missing." ]
-                                    )
-                               ]
-                        )
+                                 else
+                                    viewArguments preference { winners = winners, losers = losers } 0 True model.showDefeated
+                                        ++ [ explanationText ]
+                                )
+                            ]
+                        ]
 
                 _ ->
                     none
+            , el
+                [ Font.color (rgb 0 0 1)
+                , Events.onClick (LoadExample employment)
+                , pointer
+                ]
+                (text "Load employment law example.")
             ]
         )
 
 
-explanationText =
-    column [ paddingXY 0 20, spacingXY 0 20 ]
-        [ paragraph []
-            [ text "Pro arguments are "
-            , el [ Border.width 2, Border.color (rgba 0 0 0 0.1), Background.color (rgba 0 0 0 0.1), padding 5 ] (text "gray")
-            , text ", contra arguments are "
-            , el [ Border.width 2, Font.color (rgb 1 1 1), Background.color (rgb 0 0 0), padding 5 ] (text "black")
-            , text "."
-            ]
-        , paragraph []
-            [ text "Information that is not yet known is in "
-            , el [ padding 5, Border.width 2, Border.color (rgba 0 0 0 0.1) ] (text "bordered")
-            , text " "
-            , el [ padding 5, Border.width 2 ] (text "boxes")
-            , text "."
-            ]
-        , paragraph []
-            [ text "Possibly relevant arguments that are rebutted or defeated are "
-            , el [ Font.strike ] (text "striked through")
-            , text "."
-            ]
-        , paragraph []
-            [ text "There is some redundancy when arguments can be ordered in different ways."
-            ]
+viewQuestions : Preference -> { winners : Support, losers : Support } -> List (Element Msg)
+viewQuestions preference supports =
+    let
+        questions_ =
+            questions preference supports
+    in
+    if questions_ == [] then
+        []
+
+    else
+        [ paragraph [] [ text "Further information required!" ]
+        , paragraph [] [ text "Answer at least one of the questions in each block." ]
+        , column [ width fill, spacing 20 ]
+            (List.map
+                (\l ->
+                    column
+                        [ Border.width 2
+                        , padding 10
+                        , width fill
+                        , spacing 20
+                        ]
+                        (List.map viewQuestion l)
+                )
+                questions_
+            )
         ]
 
 
-viewRelevantArgument : Int -> Bool -> RelevantArgument -> Element Msg
-viewRelevantArgument depth isPro a =
+viewQuestion a =
+    row [ spacing 40 ]
+        [ text (a ++ "?")
+        , el
+            [ Events.onClick (AddRule (Variable a))
+            , pointer
+            ]
+            (text "True")
+        , el
+            [ Events.onClick (AddRule (Not (Variable a)))
+            , pointer
+            ]
+            (text "False")
+        ]
+
+
+viewArgument : Preference -> Int -> Bool -> Bool -> Bool -> Argument -> Element Msg
+viewArgument preference depth isPro isWinner showDefeated argument =
     column
         [ width fill
         , spacing 2
         ]
-        (case a of
-            RelevantAssumption p ->
-                [ indented depth isPro True False (text (propositionToString p)) ]
+        (case argument of
+            Assumption p ->
+                [ indented depth isPro isWinner False (text (propositionToString p)) ]
 
-            RelevantArgument p s ->
-                indented depth isPro True False (text (propositionToString p))
-                    :: viewArguments s (depth + 1) isPro
+            Argument p s ->
+                indented depth isPro isWinner False (text (propositionToString p))
+                    :: viewArguments preference (winnersLosers preference s) (depth + 1) isPro showDefeated
 
-            RelevantOpen c ->
-                [ indented depth isPro True True (text (String.join ", " (List.map factToString c))) ]
+            Open c ->
+                [ indented depth isPro isWinner True (text (String.join ", " (List.map factToString c))) ]
         )
 
 
-viewDefeatedArgument : Int -> Bool -> Defeated -> Element Msg
-viewDefeatedArgument depth isPro a =
-    column
-        [ width fill
-        , spacing 2
-        ]
-        (case a of
-            DefeatedClosed p ->
-                [ indented depth isPro False False (text (propositionToString p)) ]
-
-            DefeatedOpen c ->
-                [ indented depth isPro False True (text (String.join ", " (List.map factToString c))) ]
-        )
-
-
-viewArguments : Support -> Int -> Bool -> List (Element Msg)
-viewArguments { relevant, irrelevant } depth isPro =
+viewArguments : Preference -> { winners : Support, losers : Support } -> Int -> Bool -> Bool -> List (Element Msg)
+viewArguments preference { winners, losers } depth isPro showDefeated =
     (let
         { pro, contra } =
-            relevant
+            winners
      in
-     List.map (viewRelevantArgument depth isPro) pro
-        ++ List.map (viewRelevantArgument depth (not isPro)) contra
+     List.map (viewArgument preference depth isPro True showDefeated) pro
+        ++ List.map (viewArgument preference depth (not isPro) True showDefeated) contra
     )
         ++ (let
                 { pro, contra } =
-                    irrelevant
+                    losers
             in
-            List.map (viewDefeatedArgument depth isPro) pro
-                ++ List.map (viewDefeatedArgument depth isPro) contra
+            if showDefeated then
+                List.map (viewArgument preference depth isPro False False) pro
+                    ++ List.map (viewArgument preference depth (not isPro) False False) contra
+
+            else
+                []
            )
 
 
-indented depth isPro isRelevant isOpen x =
+indented depth isPro isWinner isOpen x =
     let
         color =
             if isPro then
@@ -314,6 +308,11 @@ indented depth isPro isRelevant isOpen x =
                 )
              , Border.width 2
              , Border.color color
+             , if isOpen then
+                Border.dotted
+
+               else
+                Border.solid
              , Font.color
                 (if isPro || isOpen then
                     rgb 0 0 0
@@ -323,7 +322,7 @@ indented depth isPro isRelevant isOpen x =
                 )
              , padding 5
              ]
-                ++ (if isRelevant then
+                ++ (if isWinner then
                         []
 
                     else
@@ -347,6 +346,44 @@ logicFont =
             , url = "font.css"
             }
         , Font.sansSerif
+        ]
+
+
+explanationText =
+    column [ paddingXY 0 20, spacingXY 0 20 ]
+        [ paragraph []
+            [ text "Pro arguments are "
+            , el [ Border.width 2, Border.color (rgba 0 0 0 0.1), Background.color (rgba 0 0 0 0.1), padding 5 ] (text "gray")
+            , text ", contra arguments are "
+            , el [ Border.width 2, Font.color (rgb 1 1 1), Background.color (rgb 0 0 0), padding 5 ] (text "black")
+            , text "."
+            ]
+        , paragraph []
+            [ text "Information that is not yet known is in "
+            , el
+                [ padding 5
+                , Border.width 2
+                , Border.color (rgba 0 0 0 0.1)
+                , Border.dotted
+                ]
+                (text "dotted")
+            , text " "
+            , el
+                [ padding 5
+                , Border.width 2
+                , Border.dotted
+                ]
+                (text "frames")
+            , text "."
+            ]
+        , paragraph []
+            [ text "Possibly relevant arguments that are rebutted or defeated are "
+            , el [ Font.strike ] (text "striked through")
+            , text "."
+            ]
+        , paragraph []
+            [ text "There is some redundancy when arguments can be ordered in different ways."
+            ]
         ]
 
 
