@@ -58,8 +58,8 @@ logic =
         |. Parser.end
 
 
-parse : String -> Maybe Proposition
-parse text =
+parse_ : Parser a -> String -> Maybe a
+parse_ parser text =
     let
         unambiguous =
             text
@@ -70,12 +70,8 @@ parse text =
                 |> String.replace "Iff" "↔"
                 |> String.replace "IFF" "↔"
     in
-    case Parser.run logic unambiguous of
-        Ok a ->
-            Just a
-
-        Err _ ->
-            Nothing
+    Parser.run parser unambiguous
+        |> Result.toMaybe
 
 
 rankedLogic : Parser ( Int, Proposition )
@@ -108,4 +104,4 @@ rankedLogic =
 
 parseRanked : String -> Maybe ( Int, Proposition )
 parseRanked =
-    Parser.run rankedLogic >> Result.toMaybe
+    parse_ rankedLogic

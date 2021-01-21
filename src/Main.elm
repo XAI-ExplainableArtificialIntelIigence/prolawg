@@ -378,7 +378,7 @@ explanationText =
             ]
         , paragraph []
             [ text "Possibly relevant arguments that are rebutted or defeated are "
-            , el [ Font.strike ] (text "striked through")
+            , el [ Font.strike ] (text "struck through")
             , text "."
             ]
         , paragraph []

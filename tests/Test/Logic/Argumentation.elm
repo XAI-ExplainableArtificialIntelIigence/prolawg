@@ -74,8 +74,7 @@ suite =
                             [ "A"
                             ]
                         )
-                        (Just { losers = { contra = [], pro = [] }, winners = { contra = [], pro = [Assumption_ "A"] } })
-
+                        (Just { losers = { contra = [], pro = [] }, winners = { contra = [], pro = [ Assumption_ "A" ] } })
             , test "A?, ¬A" <|
                 \_ ->
                     Expect.equal
@@ -83,7 +82,7 @@ suite =
                             [ "not A"
                             ]
                         )
-                        (Just { losers = { contra = [], pro = [] }, winners = { contra = [Assumption_ "¬A"], pro = [] } })
+                        (Just { losers = { contra = [], pro = [] }, winners = { contra = [ Assumption_ "¬A" ], pro = [] } })
             , test "¬A?, ¬A" <|
                 \_ ->
                     Expect.equal
@@ -91,7 +90,7 @@ suite =
                             [ "¬A"
                             ]
                         )
-                        (Just { losers = { contra = [], pro = [] }, winners = { contra = [], pro = [Assumption_ "¬A"] } })
+                        (Just { losers = { contra = [], pro = [] }, winners = { contra = [], pro = [ Assumption_ "¬A" ] } })
             , test "True?" <|
                 \_ ->
                     Expect.equal
@@ -121,7 +120,7 @@ suite =
                             , "A"
                             ]
                         )
-                        (Just { losers = { contra = [], pro = [] }, winners = { contra = [], pro = [Argument_ "A -> B" { contra = [Open_ ["¬A"]], pro = [Assumption_ "A"] }] } })
+                        (Just { losers = { contra = [], pro = [] }, winners = { contra = [], pro = [ Argument_ "A -> B" { contra = [ Open_ [ "¬A" ] ], pro = [ Assumption_ "A" ] } ] } })
             , test "C?, A, A -> B, B -> C" <|
                 \_ ->
                     Expect.equal
@@ -131,7 +130,7 @@ suite =
                             , "B -> C"
                             ]
                         )
-                        (Just { losers = { contra = [], pro = [] }, winners = { contra = [], pro = [Argument_ "B -> C" { contra = [Open_ ["¬B"]], pro = [Argument_ "A -> B" { contra = [Open_ ["¬A"]], pro = [Assumption_ "A"] }] }] } })
+                        (Just { losers = { contra = [], pro = [] }, winners = { contra = [], pro = [ Argument_ "B -> C" { contra = [ Open_ [ "¬B" ] ], pro = [ Argument_ "A -> B" { contra = [ Open_ [ "¬A" ] ], pro = [ Assumption_ "A" ] } ] } ] } })
             , test "E?, A, A -> B, B -> C, C -> D, D -> E" <|
                 \_ ->
                     Expect.equal
@@ -143,7 +142,7 @@ suite =
                             , "D -> E"
                             ]
                         )
-                        Nothing
+                        (Just { losers = { contra = [], pro = [] }, winners = { contra = [ Argument_ "C -> D" { contra = [ Open_ [ "D" ] ], pro = [ Argument_ "D -> E" { contra = [ Open_ [ "E" ] ], pro = [ Open_ [ "¬E" ] ] } ] } ], pro = [ Argument_ "B -> C" { contra = [ Open_ [ "¬B" ] ], pro = [ Argument_ "A -> B" { contra = [ Open_ [ "¬A" ] ], pro = [ Assumption_ "A" ] } ] } ] } })
             , test "C?, A and B -> C, A, B" <|
                 \_ ->
                     Expect.equal
@@ -153,7 +152,7 @@ suite =
                             , "B"
                             ]
                         )
-                        Nothing
+                        (Just { losers = { contra = [], pro = [] }, winners = { contra = [], pro = [ Argument_ "(A ∧ B) -> C" { contra = [ Open_ [ "¬A" ], Open_ [ "¬B" ] ], pro = [ Argument_ "A" { contra = [ Open_ [ "¬B" ] ], pro = [ Assumption_ "B" ] }, Argument_ "B" { contra = [ Open_ [ "¬A" ] ], pro = [ Assumption_ "A" ] } ] } ] } })
             , test "C?, A or B -> C, A, B" <|
                 \_ ->
                     Expect.equal
@@ -163,7 +162,7 @@ suite =
                             , "B"
                             ]
                         )
-                        Nothing
+                        (Just { losers = { contra = [], pro = [] }, winners = { contra = [], pro = [ Argument_ "(A ∨ B) -> C" { contra = [ Open_ [ "¬A", "¬B" ] ], pro = [ Assumption_ "A", Assumption_ "B" ] } ] } })
             , test "A and B?, A, B" <|
                 \_ ->
                     Expect.equal
@@ -172,7 +171,7 @@ suite =
                             , "B"
                             ]
                         )
-                        Nothing
+                        (Just { losers = { contra = [], pro = [] }, winners = { contra = [], pro = [] } })
             , test "A or B? A, B" <|
                 \_ ->
                     Expect.equal
@@ -181,10 +180,72 @@ suite =
                             , "B"
                             ]
                         )
+                        (Just { losers = { contra = [], pro = [] }, winners = { contra = [], pro = [ Assumption_ "A", Assumption_ "B" ] } })
+            ]
+        , describe "real world explanations"
+            [ skip <|
+                test "Main example from Cremers 2016" <|
+                    \_ ->
+                        Expect.equal
+                            (explanation_ "LEGAL_RequestedChangeWorkingTimes"
+                                [ "1: (EmployedAt) -> OPPOWER_MakeRequest"
+                                , "2: (EmployedAt /\\ LessThanTenEmployees) -> not OPPOWER_MakeRequest"
+                                , "3: (EmployedAt /\\ ReacedOldAgeInsuranceAge) -> not OPPOWER_MakeRequest"
+                                , "4: (EmployedAt /\\ MilitaryOfficial) -> not OPPOWER_MakeRequest"
+                                , "5: (EmployedAt /\\ UnforseenCircumstances) -> OPPOWER_MakeRequest"
+                                , "6: (OPPOWER_MakeRequest /\\ DOES_RequestChangeWorkingHours) -> LEGAL_RequestedChangeWorkingHours"
+                                , "7: (OPPOWER_MakeRequest /\\ DOES_RequestChangeWorkingHours /\\ not RequestSubmittedInWriting) -> not LEGAL_RequestedChangeWorkingHours"
+                                , "8: (OPPOWER_MakeRequest /\\ DOES_RequestChangeWorkingHours /\\ not TimeSinceLastRequestMinOneYear) -> not LEGAL_RequestedChangeWorkingHours"
+                                , "9: (OPPOWER_MakeRequest /\\ DOES_RequestChangeWorkingHours /\\ not WorkedForAtleastTwentysixWeeks) -> not LEGAL_RequestedChangeWorkingHours"
+                                , "10: (OPPOWER_MakeRequest /\\ DOES_RequestChangeWorkingHours /\\ UnforseenCircumtances) -> LEGAL_RequestedChangeWorkingHours"
+                                , "11: (OPPOWER_MakeRequest /\\ DOES_RequestChangeWorkingTimes) -> LEGAL_RequestedChangeWorkingTimes"
+                                , "12: (OPPOWER_MakeRequest /\\ DOES_RequestChangeWorkingTimes /\\ not RequestSubmittedInWriting) -> not LEGAL_RequestedChangeWorkingTimes"
+                                , "13: (OPPOWER_MakeRequest /\\ DOES_RequestChangeWorkingTimes /\\ not TimeSinceLastRequestMinOneYear) -> not LEGAL_RequestedChangeWorkingTimes"
+                                , "14: (OPPOWER_MakeRequest /\\ DOES_RequestChangeWorkingTimes /\\ not WorkedForAtleastTwentysixWeeks) -> not LEGAL_RequestedChangeWorkingTimes"
+                                , "15: (OPPOWER_MakeRequest /\\ DOES_RequestChangeWorkingTimes /\\ UnforeseenCircumstances) -> LEGAL_RequestedChangeWorkingTimes"
+                                , "1000: EmployedAt"
+                                , "1000: not LessThanTenEmployees"
+                                , "1000: not ReachedOldAgeInsurance"
+                                , "1000: not TimeSinceLastRequestMinOneYear"
+                                , "1000: not MilitaryOfficial"
+                                , "1000: RequestedSubmittedInWriting"
+                                , "1000: WorkedForAtLeastTwentySixWeeks"
+                                , "1000: not UnforeseenCircumstances"
+                                , "1000: DOES_RequestChangeWorkingHours"
+                                , "1000: DOES_RequestChangeWorkingTimes"
+                                ]
+                            )
+                            Nothing
+            , test "British Nationality Act" <|
+                \_ ->
+                    Expect.equal
+                        (explanation_ "IsBritishCitizen"
+                            [ "0: (BornInUK /\\ BornAfterCommencement /\\ ParentBritishCitizen) -> BritishCitizen"
+                            , "1: (FoundAsNewbornInUK /\\ FoundAfterCommencement /\\ not KnownToBeBornInNotUK /\\ not ParentKnownNotBritish) -> BritishCitizen"
+                            , "2: (BornInUK /\\ IsMinor /\\ EntitledToBeRegistered /\\ ApplicationToBeRegistered) -> BritishCitizen"
+                            , "3: (ParentBritishCitizen) -> EntitledToBeRegistered"
+                            , "4: (ParentSettledInUnitedKingdom) -> EntitledToBeRegistered"
+                            , "5: (ParentInArmedForces) -> EntitledToBeRegistered"
+                            , "6: (BornInUK /\\ AtLeastTenYearsOld /\\ ForFirstTenYearsAbsentDaysLessThanNinety) -> EntitledToBeRegistered"
+                            , "7: (AdoptionAuthorizedByBritishCourt /\\ SectionFiveRequirementsMet) -> BritishCitizen"
+                            , "8: (AdoptedUnderConventionAdoption /\\ SectionFiveRequirementsMet) -> BritishCitizen"
+                            , "9: (AtLeastOneAdopterBritishCitizen) -> SectionFiveRequirementsMet"
+                            , "10: (AllAdoptersHabituallyResidentInUK) -> SectionFiveRequirementsMet"
+                            , "11: (BornOutsideUK /\\ ParentIsBritishCitizenNotByDescent) -> BritishCitizen"
+                            , "12: (BornOutsideUK /\\ ParentIsBritishCitizen /\\ ServingOutsideOfUK) -> BritishCitizen"
+                            , "100: ForFirstTenYearsAbsentDaysLessThanNinety"
+                            , "100: ¬AdoptionAuthorizedByBritishCourt"
+                            , "100: ¬AdoptedUnderConventionAdoption"
+                            , "100: AtLeastTenYearsOld"
+                            , "100: ApplicationToBeRegistered"
+                            , "100: IsMinor"
+                            , "100: ¬ParentKnownNotBritish"
+                            , "100: ¬FoundAfterCommencement"
+                            ]
+                        )
                         Nothing
             ]
 
-        -- , describe "real world explanations"
         --     (let
         --         employmentLaw =
         --             [ Variable "employed"
