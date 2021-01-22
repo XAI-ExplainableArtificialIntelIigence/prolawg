@@ -1,6 +1,6 @@
 module Main exposing (..)
 
-import Browser exposing (sandbox)
+import Browser
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -54,11 +54,7 @@ initialQuestion =
 
 initialRules =
     [ "2: a /\\ b -> x"
-
-    --, "a and b"
     , "1: c -> not x"
-
-    --, "not c"
     ]
 
 
@@ -353,9 +349,21 @@ explanationText =
     column [ paddingXY 0 20, spacingXY 0 20 ]
         [ paragraph []
             [ text "Pro arguments are "
-            , el [ Border.width 2, Border.color (rgba 0 0 0 0.1), Background.color (rgba 0 0 0 0.1), padding 5 ] (text "gray")
+            , el
+                [ Border.width 2
+                , Border.color (rgba 0 0 0 0.1)
+                , Background.color (rgba 0 0 0 0.1)
+                , padding 5
+                ]
+                (text "gray")
             , text ", contra arguments are "
-            , el [ Border.width 2, Font.color (rgb 1 1 1), Background.color (rgb 0 0 0), padding 5 ] (text "black")
+            , el
+                [ Border.width 2
+                , Font.color (rgb 1 1 1)
+                , Background.color (rgb 0 0 0)
+                , padding 5
+                ]
+                (text "black")
             , text "."
             ]
         , paragraph []
@@ -393,14 +401,14 @@ explanationText =
 
 employment =
     ( "CanMakeRequestForChange"
-    , [ "Employed"
-      , "¬LessThanTenEmployees"
-      , "¬ReachedOldAgeInsurance"
-      , "MilitaryOfficial"
-      , "WorkedForAtLeastTwentySixWeeks"
-      , "Employed -> CanMakeRequestForChange"
-      , "Employed /\\ LessThanTenEmployees -> ¬CanMakeRequestForChange"
-      , "Employed /\\ ReachedOldAgeInsurance -> ¬CanMakeRequestForChange"
-      , "Employed /\\ MilitaryOfficial -> ¬CanMakeRequestForChange"
+    , [ "1: Employed -> CanMakeRequestForChange"
+      , "2: Employed /\\ LessThanTenEmployees -> ¬CanMakeRequestForChange"
+      , "2: Employed /\\ ReachedOldAgeInsurance -> ¬CanMakeRequestForChange"
+      , "2: Employed /\\ MilitaryOfficial -> ¬CanMakeRequestForChange"
+      , "10: Employed"
+      , "10: ¬LessThanTenEmployees"
+      , "10: ¬ReachedOldAgeInsurance"
+      , "10: MilitaryOfficial"
+      , "10: WorkedForAtLeastTwentySixWeeks"
       ]
     )

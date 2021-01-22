@@ -102,6 +102,11 @@ rankedLogic =
         ]
 
 
+parse : String -> Maybe Proposition
+parse =
+    parse_ logic
+
+
 parseRanked : String -> Maybe ( Int, Proposition )
 parseRanked =
     parse_ rankedLogic

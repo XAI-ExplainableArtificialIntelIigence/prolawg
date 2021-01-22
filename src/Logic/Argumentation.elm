@@ -55,8 +55,6 @@ head a =
             Nothing
 
 
-{-| Performs resolution.
--}
 arguments : DNF -> DNF -> List Proposition -> List Argument
 arguments originalQuestion question information =
     information
@@ -128,8 +126,8 @@ proContra originalQuestion question information =
     }
 
 
-preferred : Preference -> Argument -> Argument -> Bool
-preferred preference a b =
+isPreferred : Preference -> Argument -> Argument -> Bool
+isPreferred preference a b =
     case ( a, b ) of
         ( Open _, Open _ ) ->
             False
@@ -158,7 +156,7 @@ isDefeated preference a =
             )
                 || (contra
                         |> List.filter (\p -> not (isDefeated preference p) && not (isRebutted preference pro p))
-                        |> List.any (\p -> preferred preference p a)
+                        |> List.any (\p -> isPreferred preference p a)
                    )
 
         _ ->
@@ -169,7 +167,7 @@ isRebutted : Preference -> List Argument -> Argument -> Bool
 isRebutted preference opponents a =
     opponents
         |> List.filter (\p -> not (isDefeated preference p))
-        |> List.any (\b -> preferred preference b a)
+        |> List.any (\b -> isPreferred preference b a)
 
 
 winnersLosers : Preference -> Support -> { winners : Support, losers : Support }

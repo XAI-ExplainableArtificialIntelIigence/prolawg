@@ -12869,7 +12869,7 @@ var $mdgriffith$elm_ui$Element$Input$defaultCheckbox = function (checked) {
 var $author$project$Main$employment = _Utils_Tuple2(
 	'CanMakeRequestForChange',
 	_List_fromArray(
-		['Employed', '¬LessThanTenEmployees', '¬ReachedOldAgeInsurance', 'MilitaryOfficial', 'WorkedForAtLeastTwentySixWeeks', 'Employed -> CanMakeRequestForChange', 'Employed /\\ LessThanTenEmployees -> ¬CanMakeRequestForChange', 'Employed /\\ ReachedOldAgeInsurance -> ¬CanMakeRequestForChange', 'Employed /\\ MilitaryOfficial -> ¬CanMakeRequestForChange']));
+		['1: Employed -> CanMakeRequestForChange', '2: Employed /\\ LessThanTenEmployees -> ¬CanMakeRequestForChange', '2: Employed /\\ ReachedOldAgeInsurance -> ¬CanMakeRequestForChange', '2: Employed /\\ MilitaryOfficial -> ¬CanMakeRequestForChange', '10: Employed', '10: ¬LessThanTenEmployees', '10: ¬ReachedOldAgeInsurance', '10: MilitaryOfficial', '10: WorkedForAtLeastTwentySixWeeks']));
 var $elm$core$List$all = F2(
 	function (isOkay, list) {
 		return !A2(
@@ -13265,7 +13265,7 @@ var $author$project$Logic$Argumentation$head = function (a) {
 			return $elm$core$Maybe$Nothing;
 	}
 };
-var $author$project$Logic$Argumentation$preferred = F3(
+var $author$project$Logic$Argumentation$isPreferred = F3(
 	function (preference, a, b) {
 		var _v0 = _Utils_Tuple2(a, b);
 		if (_v0.a.$ === 'Open') {
@@ -13310,7 +13310,7 @@ var $author$project$Logic$Argumentation$isDefeated = F2(
 					pro)) || A2(
 				$elm$core$List$any,
 				function (p) {
-					return A3($author$project$Logic$Argumentation$preferred, preference, p, a);
+					return A3($author$project$Logic$Argumentation$isPreferred, preference, p, a);
 				},
 				A2(
 					$elm$core$List$filter,
@@ -13327,7 +13327,7 @@ var $author$project$Logic$Argumentation$isRebutted = F3(
 		return A2(
 			$elm$core$List$any,
 			function (b) {
-				return A3($author$project$Logic$Argumentation$preferred, preference, b, a);
+				return A3($author$project$Logic$Argumentation$isPreferred, preference, b, a);
 			},
 			A2(
 				$elm$core$List$filter,
