@@ -130,7 +130,8 @@ view model =
             , spacing 50
             , centerX
             ]
-            [ Input.multiline [ logicFont ]
+            [ intro
+            , Input.multiline [ logicFont ]
                 { onChange = NewRules
                 , text = model.rulesInput
                 , placeholder = Nothing
@@ -342,6 +343,35 @@ logicFont =
             , url = "font.css"
             }
         , Font.sansSerif
+        ]
+
+
+intro =
+    textColumn
+        [ Font.family [ Font.typeface "Arial" ]
+        , Font.justify
+        , spacing 10
+        ]
+        [ paragraph []
+            [ text "This interactive decision support system gives answers to questions based on laws. Laws can be modelled as defeasible logic rules, where some rules are exceptions to other rules. When the user poses a question, the system will ask for exactly the information needed to establish an answer that can be explained by a non-refutable argument. When multiple sets of information lead to such an answer, the system will give the user full control over which information they want to specify." ]
+        , paragraph []
+            [ text "Have a look at our "
+            , link [ Font.color (rgb 0 0 1) ]
+                { url = "https://explainable-reasoning.github.io"
+                , label = text "non-technical introduction"
+                }
+            , text ", our "
+            , link [ Font.color (rgb 0 0 1) ]
+                { url = "https://github.com/explainable-reasoning/explainable-reasoning.github.io/raw/main/proposal.pdf"
+                , label = text "project proposal"
+                }
+            , text ", and the "
+            , link [ Font.color (rgb 0 0 1) ]
+                { url = "https://github.com/explainable-reasoning/argument-search"
+                , label = text "code repository"
+                }
+            , text " for this application."
+            ]
         ]
 
 
